@@ -1,15 +1,65 @@
 import { prisma } from '@/lib/prisma'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { buttonClassName } from '@/components/ui/Button'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { DeleteConcursoButton } from '@/components/DeleteConcursoButton'
-import { CARGO_LABELS } from '@/lib/concurso-status'
+import { ConcursoFilters } from '@/components/ConcursoFilters'
+import { CARGO_LABELS, CARGOS } from '@/lib/concurso-status'
+import type { Prisma } from '@prisma/client'
 
-export default async function AdminConcursosPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
+
+function primer(v: string | string[] | undefined): string {
+  return (Array.isArray(v) ? v[0] : v)?.trim() ?? ''
+}
+
+export default async function AdminConcursosPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const sp = await searchParams
+  const q = primer(sp.q)
+  const catedra = primer(sp.catedra)
+  const cargo = primer(sp.cargo)
+  const estado = primer(sp.estado)
+  const desde = primer(sp.desde)
+  const hasta = primer(sp.hasta)
+  const inscriptos = primer(sp.inscriptos)
+
+  const now = new Date()
+  const where: Prisma.ConcursoWhereInput = {}
+  const and: Prisma.ConcursoWhereInput[] = []
+
+  if (q) and.push({ numeroExpediente: { contains: q, mode: 'insensitive' } })
+  if (catedra) and.push({ catedra: { contains: catedra, mode: 'insensitive' } })
+  if (cargo && CARGOS.includes(cargo as (typeof CARGOS)[number])) and.push({ cargo })
+
+  if (estado === 'activo') {
+    and.push({ fechaApertura: { lte: now } }, { fechaCierre: { gte: now } })
+  } else if (estado === 'proximo') {
+    and.push({ fechaApertura: { gt: now } })
+  } else if (estado === 'cerrado') {
+    and.push({ fechaCierre: { lt: now } })
+  }
+
+  if (desde) and.push({ fechaCierre: { gte: new Date(desde) } })
+  if (hasta) and.push({ fechaCierre: { lte: new Date(`${hasta}T23:59:59`) } })
+
+  if (inscriptos === 'con') and.push({ postulantes: { some: {} } })
+  if (inscriptos === 'sin') and.push({ postulantes: { none: {} } })
+
+  if (and.length) where.AND = and
+
   const concursos = await prisma.concurso.findMany({
+    where,
     include: { _count: { select: { postulantes: true } } },
     orderBy: { fechaApertura: 'desc' },
   })
+
+  const hayFiltros =
+    q || catedra || cargo || estado || desde || hasta || inscriptos
 
   return (
     <div className="space-y-6">
@@ -24,10 +74,28 @@ export default async function AdminConcursosPage() {
         </Link>
       </header>
 
+      <Suspense
+        fallback={<div className="h-28 rounded-md border border-gray-200 bg-white shadow-sm" aria-hidden />}
+      >
+        <ConcursoFilters cargos={[...CARGOS]} />
+      </Suspense>
+
+      {hayFiltros && (
+        <p className="text-sm text-gray-500">
+          {concursos.length} resultado{concursos.length !== 1 ? 's' : ''}
+        </p>
+      )}
+
       {concursos.length === 0 ? (
         <div className="rounded-md border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
-          <h2 className="text-base font-semibold text-gray-900">No hay concursos creados</h2>
-          <p className="mt-1 text-sm text-gray-500">Creá el primer llamado para abrir inscripciones.</p>
+          <h2 className="text-base font-semibold text-gray-900">
+            {hayFiltros ? 'No hay concursos que coincidan con la búsqueda' : 'No hay concursos creados'}
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {hayFiltros
+              ? 'Probá ajustar o limpiar los filtros.'
+              : 'Creá el primer llamado para abrir inscripciones.'}
+          </p>
         </div>
       ) : (
         <section className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
