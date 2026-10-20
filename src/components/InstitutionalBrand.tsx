@@ -6,10 +6,10 @@ export function InstitutionalBrand({ compact = false }: { compact?: boolean }) {
       <Image
         src="/logo-header-dark.png"
         alt="Universidad Nacional de Tucumán — Facultad de Ciencias Económicas"
-        width={compact ? 190 : 330}
-        height={compact ? 43 : 75}
+        width={1046}
+        height={190}
         priority
-        className={compact ? 'h-auto w-[190px]' : 'h-auto w-[330px]'}
+        className={compact ? 'h-auto w-[240px]' : 'h-auto w-[420px]'}
       />
     </div>
   )
