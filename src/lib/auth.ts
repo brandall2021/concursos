@@ -2,17 +2,7 @@ import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './prisma'
-
-function dominiosPermitidos(): string[] {
-  return (process.env.AUTH_ALLOWED_DOMAINS ?? '')
-    .split(',')
-    .map((d) => d.trim().toLowerCase())
-    .filter(Boolean)
-}
-
-function emailDeDominio(email: string): string {
-  return email.split('@')[1]?.toLowerCase() ?? ''
-}
+import { dominioPermitido } from './dominios'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -28,14 +18,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!user.email) return false
       const email = user.email.toLowerCase()
 
-      const permitidos = dominiosPermitidos()
-      if (permitidos.length > 0 && !permitidos.includes(emailDeDominio(email))) {
+      if (!dominioPermitido(email)) {
         console.warn(`[auth] Login rechazado por dominio: ${email}`)
         return false
       }
 
       if (email === process.env.ADMIN_EMAIL?.toLowerCase()) return true
       const existing = await prisma.user.findUnique({ where: { email } })
+      if (!existing) console.warn(`[auth] Login rechazado: ${email} no está en la whitelist`)
       return Boolean(existing)
     },
     async session({ session, user }) {

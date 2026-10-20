@@ -2,20 +2,12 @@
 
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/guards'
+import { dominioPermitido } from '@/lib/dominios'
 import { revalidatePath } from 'next/cache'
 
 export type UsuarioActionResult = { error: string } | { success: true } | void
 
 const LARGO_MAX_EMAIL = 254
-
-function dominioPermitido(email: string): boolean {
-  const allowed = (process.env.AUTH_ALLOWED_DOMAINS ?? '')
-    .split(',')
-    .map((d) => d.trim().toLowerCase())
-    .filter(Boolean)
-  if (allowed.length === 0) return true
-  return allowed.includes(email.split('@')[1]?.toLowerCase() ?? '')
-}
 
 export async function addUsuario(formData: FormData): Promise<UsuarioActionResult> {
   await requireAdmin()
