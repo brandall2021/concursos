@@ -45,7 +45,7 @@ export function ConcursoFilters({ cargos }: { cargos: string[] }) {
 
   const value = (name: string) => searchParams.get(name) ?? ''
 
-  const hayFiltros = ['q', 'catedra', 'cargo', 'estado', 'desde', 'hasta', 'inscriptos'].some((k) =>
+  const hayFiltros = ['q', 'catedra', 'cargo', 'estado', 'inscripto', 'inscriptos'].some((k) =>
     searchParams.get(k)
   )
 
@@ -118,34 +118,22 @@ export function ConcursoFilters({ cargos }: { cargos: string[] }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="f-desde" className={labelClass}>
-            Cierre desde
+          <label htmlFor="f-inscripto" className={labelClass}>
+            Inscripto
           </label>
           <input
-            id="f-desde"
-            type="date"
-            value={value('desde')}
+            id="f-inscripto"
+            type="search"
+            placeholder="Ej. Juan Pérez o DNI"
+            defaultValue={value('inscripto')}
             className={inputClass}
-            onChange={(e) => update('desde', e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="f-hasta" className={labelClass}>
-            Cierre hasta
-          </label>
-          <input
-            id="f-hasta"
-            type="date"
-            value={value('hasta')}
-            className={inputClass}
-            onChange={(e) => update('hasta', e.target.value)}
+            onChange={(e) => update('inscripto', e.target.value)}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="f-inscriptos" className={labelClass}>
-            Inscriptos
+            Postulantes
           </label>
           <select
             id="f-inscriptos"

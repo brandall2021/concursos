@@ -6,12 +6,38 @@ import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { DeleteConcursoButton } from '@/components/DeleteConcursoButton'
 import { ConcursoFilters } from '@/components/ConcursoFilters'
 import { CARGO_LABELS, CARGOS } from '@/lib/concurso-status'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
 function primer(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v)?.trim() ?? ''
+}
+
+const SQL_UNACCENT =
+  "translate(lower(coalesce(p.apellidos, '') || ' ' || coalesce(p.nombres, '') || ' ' || coalesce(p.dni, '')), 'áàäâãéèëêíìïîóòöôõúùüûñç', 'aaaaaeeeeiiiiooooouuuunc')"
+
+function normalizar(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+async function buscarConcursosPorInscripto(texto: string): Promise<string[]> {
+  const termino = normalizar(texto)
+  if (!termino) return []
+  const palabras = termino.split(/\s+/).filter(Boolean)
+  const condiciones = palabras.map(
+    (palabra) => Prisma.sql`${Prisma.raw(SQL_UNACCENT)} LIKE ${'%' + palabra + '%'}`
+  )
+  const filas = await prisma.$queryRaw<{ concursoId: string }[]>`
+    SELECT DISTINCT p."concursoId" AS "concursoId"
+    FROM "Postulante" p
+    WHERE ${Prisma.join(condiciones, ' AND ')}
+  `
+  return filas.map((f) => f.concursoId)
 }
 
 export default async function AdminConcursosPage({
@@ -24,8 +50,7 @@ export default async function AdminConcursosPage({
   const catedra = primer(sp.catedra)
   const cargo = primer(sp.cargo)
   const estado = primer(sp.estado)
-  const desde = primer(sp.desde)
-  const hasta = primer(sp.hasta)
+  const inscripto = primer(sp.inscripto)
   const inscriptos = primer(sp.inscriptos)
 
   const now = new Date()
@@ -44,8 +69,10 @@ export default async function AdminConcursosPage({
     and.push({ fechaCierre: { lt: now } })
   }
 
-  if (desde) and.push({ fechaCierre: { gte: new Date(desde) } })
-  if (hasta) and.push({ fechaCierre: { lte: new Date(`${hasta}T23:59:59`) } })
+  if (inscripto) {
+    const ids = await buscarConcursosPorInscripto(inscripto)
+    and.push({ id: { in: ids } })
+  }
 
   if (inscriptos === 'con') and.push({ postulantes: { some: {} } })
   if (inscriptos === 'sin') and.push({ postulantes: { none: {} } })
@@ -59,7 +86,7 @@ export default async function AdminConcursosPage({
   })
 
   const hayFiltros =
-    q || catedra || cargo || estado || desde || hasta || inscriptos
+    q || catedra || cargo || estado || inscripto || inscriptos
 
   return (
     <div className="space-y-6">
