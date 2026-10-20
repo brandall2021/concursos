@@ -5,7 +5,7 @@ Aplicación web para la inscripción digital a concursos docentes (Profesores Ti
 - **Postulantes:** ven los llamados con inscripción abierta, seleccionan el concurso, completan sus datos, adjuntan la documentación (solicitud, DNI, CV y respaldatoria de antecedentes) y aceptan las declaraciones juradas. Reciben un comprobante PDF con código QR.
 - **Administradores (Departamento Concursos):** crean, editan y eliminan llamados; consultan postulantes; descargan la documentación y exportan a CSV/PDF. Login con Google OAuth.
 
-**Stack:** Next.js 16 (App Router, Turbopack) · React 19 · Prisma 5 · PostgreSQL · NextAuth v5 · Tailwind CSS v4 · pdfkit · qrcode · Vitest
+**Stack:** Next.js 16 (App Router, Turbopack) · React 19 · Prisma 5 · PostgreSQL · NextAuth v5 · Tailwind CSS v4 · pdfkit · qrcode · nodemailer · Vitest
 
 ---
 
@@ -14,17 +14,18 @@ Aplicación web para la inscripción digital a concursos docentes (Profesores Ti
 1. [Requisitos](#requisitos)
 2. [Variables de entorno](#variables-de-entorno)
 3. [Documentación requerida por el postulante](#documentación-requerida-por-el-postulante)
-4. [Desarrollo local](#desarrollo-local)
-5. [Base de datos](#base-de-datos)
-6. [Tests y build](#tests-y-build)
-7. [Despliegue en Dokploy](#despliegue-en-dokploy)
-8. [Arquitectura y estructura](#arquitectura-y-estructura)
+4. [Notificación por email](#notificación-por-email)
+5. [Desarrollo local](#desarrollo-local)
+6. [Base de datos](#base-de-datos)
+7. [Tests y build](#tests-y-build)
+8. [Despliegue en Dokploy](#despliegue-en-dokploy)
+9. [Arquitectura y estructura](#arquitectura-y-estructura)
 
 ---
 
 ## Requisitos
 
-- **Node.js 20+** (el contenedor usa `node:20-alpine`).
+- **Node.js 22.12+** (lo exige Vitest 5; `next` conforma con 20.9+. La imagen Docker usa `node:22-alpine`).
 - **PostgreSQL 14+** accesible desde la aplicación.
 - **Google OAuth** (Client ID y Secret) para el panel de administración.
 - **Docker** (opcional, sólo para despliegue en contenedor).
@@ -39,11 +40,11 @@ Copiar `.env.example` a `.env` y completar los valores.
 |---|---|---|
 | `DATABASE_URL` | Sí | Cadena de conexión PostgreSQL: `postgresql://USUARIO:PASSWORD@HOST:5432/concursos_docentes` |
 | `AUTH_URL` | Sí | URL pública de la aplicación, p. ej. `https://concursos.softgroup.com.ar`. En local: `http://localhost:3000` |
-| `AUTH_SECRET` | Sí | Clave secreta de NextAuth. Generar con `openssl rand -base64 32` |
+| `AUTH_SECRET` | Sí | Secreto de NextAuth y **clave HMAC** que firma los enlaces del comprobante. Generar con `openssl rand -base64 32`. Rotarlo revoca todos los enlaces enviados por correo |
 | `GOOGLE_CLIENT_ID` / `AUTH_GOOGLE_ID` | Sí | Client ID de Google OAuth (se acepta el prefijo `AUTH_GOOGLE_*` o `GOOGLE_*`) |
 | `GOOGLE_CLIENT_SECRET` / `AUTH_GOOGLE_SECRET` | Sí | Client Secret de Google OAuth |
 | `ADMIN_EMAIL` | Sí | Email del primer administrador (whitelist del login con Google) |
-| `AUTH_ALLOWED_DOMAINS` | No | Dominios Google permitidos, separados por coma (p. ej. `unt.edu.ar,edu.ar`). Vacío = sin restricción de dominio |
+| `AUTH_ALLOWED_DOMAINS` | No | Raíces de dominio Google permitidas, separadas por coma (p. ej. `unt.edu.ar,edu.ar`). **Casa por sufijo**: `unt.edu.ar` habilita `face.unt.edu.ar`. Vacío = sin restricción de dominio |
 | `RATE_LIMIT_MAX` | No | Inscripciones por IP dentro de la ventana. Por defecto `5` |
 | `RATE_LIMIT_VENTANA_MIN` | No | Duración de la ventana en minutos. Por defecto `60` |
 | `UPLOAD_DIR` | No | Directorio de almacenamiento de PDFs. Por defecto `./uploads`; en producción `/app/uploads` |
@@ -54,6 +55,8 @@ Copiar `.env.example` a `.env` y completar los valores.
 | `SMTP_FROM` | No | Remitente, p. ej. `Concursos Docentes <no-reply@face.unt.edu.ar>` |
 
 > **Nota:** el login admite tanto `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (convención NextAuth v5) como `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (convención clásica).
+
+> **Nota:** la IP se lee de `X-Forwarded-For` (primera entrada) y, si falta, de `X-Real-IP`; si tampoco existe, todas las inscripciones comparten la clave `desconocida` y `RATE_LIMIT_MAX` pasa a limitar el sitio entero, no por visitante. El proxy inverso de Dokploy (Traefik) debe mandar una de las dos cabeceras.
 
 ---
 
@@ -90,6 +93,8 @@ SMTP_FROM=Concursos Docentes <no-reply@face.unt.edu.ar>
 ```
 
 El envío se hace en segundo plano tras crear el registro; si el SMTP falla, la inscripción **no** se pierde ni se revierte.
+
+El enlace del correo (`/api/comprobante/[postulanteId]?t=<firma>`) está firmado con HMAC sobre el ID del postulante usando `AUTH_SECRET`, y responde **401** si la firma falta o no coincide. Se sirve con `X-Robots-Tag: noindex, nofollow` y `Cache-Control: private, no-store`.
 
 ---
 
@@ -143,6 +148,10 @@ npm run test:watch
 npm run build     # build de producción (Next.js standalone)
 npm run start     # servir el build de producción
 ```
+
+Los tests viven junto al código (`*.test.ts`) y cubren las reglas que no conviene revalidar a mano: contención de rutas y validación por firma `%PDF` en `lib/uploads`, neutralización de fórmulas y nombres de archivo en `lib/http` (donde también se prueba la firma HMAC del comprobante), la ventana fija del limitador en `lib/rate-limit`, los estados de concurso y el flujo completo de `inscribirPostulante` (validaciones, límite por IP y reversión de archivos huérfanos).
+
+> El build no debe dejar advertencias: un `readFile` con ruta dinámica sin `/* turbopackIgnore: true */` en `lib/comprobante.ts` traza todo el proyecto al standalone y terminaría filtrando `.env` dentro de la imagen.
 
 ---
 
@@ -204,7 +213,9 @@ SMTP_PASSWORD=tu-password
 SMTP_FROM=Concursos Docentes <no-reply@face.unt.edu.ar>
 ```
 
-> Para `AUTH_SECRET`: `openssl rand -base64 32`.
+> Para `AUTH_SECRET`: `openssl rand -base64 32`. Es además la clave que firma los enlaces del comprobante: si lo cambiás después de un envío, los comprobantes ya enviados dejan de abrir.
+>
+> `AUTH_ALLOWED_DOMAINS` es opcional pero conviene fijarlo en producción (`unt.edu.ar,edu.ar`); sin él, la única barrera del login es la whitelist de la tabla `User`.
 
 ---
 
@@ -275,14 +286,27 @@ No hace falta un paso manual: el **entrypoint** (`docker-entrypoint.sh`) ejecuta
 3. Acceder a `https://concursos.softgroup.com.ar/admin/login` y autenticarse con Google usando el `ADMIN_EMAIL` configurado.
 4. Desde `/admin/usuarios` se agregan/eliminan otros administradores (whitelist por email).
 
+**Prueba rápida de las barreras** (en una ventana de incógnito, sin sesión):
+
+| Pedido | Esperado |
+|---|---|
+| `GET /admin` | 302 a `/admin/login` |
+| `GET /api/admin/concursos/<id>/export?format=csv` | `401` |
+| `GET /api/comprobante/<id>` (sin `?t=`) | `401` con `Enlace no válido` |
+| `GET /` | `200` |
+
+Y en el build: `npm run build` no debe tirar advertencias de Turbopack y `docker image inspect` del runner no debe mostrar `.env` ni `uploads/` dentro de `/app`.
+
 ---
 
 ### Notas de infraestructura
 
-- **Multi-stage build:** `deps` → `builder` → `prod-deps` → `runner` (imagen final `node:20-alpine`, usuario sin privilegios `nextjs`).
+- **Multi-stage build:** `deps` → `builder` → `prod-deps` → `runner` (imagen final `node:22-alpine`, usuario sin privilegios `nextjs`).
 - **Modo standalone:** `next.config.ts` usa `output: 'standalone'`, por lo que la imagen final sólo copia `.next/standalone`, `.next/static`, `public`, `prisma` y `node_modules` de producción.
+- **`.dockerignore`:** excluye `.env*`, `.git`, `uploads/`, `node_modules`, `.next` y la documentación del `COPY . .` del builder, para que ningún secreto termine dentro de la imagen.
 - **pdfkit:** se marca como `serverExternalPackages` y las fuentes AFM se incluyen vía `outputFileTracingIncludes` (`./node_modules/pdfkit/js/data/**/*`), con copia explícita a `/ROOT/node_modules/pdfkit/js/data` en el `Dockerfile`.
 - **Healthcheck recomendado:** `GET /` (devuelve 200 con la lista de llamados abiertos).
+- **Límite por IP:** el contador vive en memoria del proceso. Con más de una réplica es por réplica, y necesita que el proxy inverso escriba `X-Forwarded-For`; si no llega, todos los postulantes comparten la clave `desconocida`.
 
 ---
 
@@ -320,23 +344,37 @@ src/
 │   ├── PostulanteForm.tsx                        # Formulario público (4 archivos)
 │   ├── ExportButtons.tsx / DeleteConcursoButton.tsx / UsuariosTable.tsx
 │   ├── InstitutionalBrand.tsx                    # Marca UNT
+│   ├── ConcursoFilters.tsx                       # Filtros de búsqueda del panel
 │   └── ui/                                       # Button, Input, Select, FileInput
+├── types/next-auth.d.ts                          # Rol en los tipos de Session/User
+├── proxy.ts                                      # Middleware: protege /admin y /api/admin
 └── lib/
     ├── auth.ts                                   # Configuración NextAuth v5
+    ├── guards.ts                                 # requireAdmin(): barrera de rol única
     ├── prisma.ts                                 # Cliente Prisma (singleton)
     ├── documentos.ts                             # Constantes y validación PDF (client-safe)
+    ├── dominios.ts                               # AUTH_ALLOWED_DOMAINS: casa por sufijo
     ├── uploads.ts                                # FS server-only (guardar/limpiar/resolver)
     ├── comprobante.ts                            # Generación del PDF del comprobante (con QR y logo)
+    ├── comprobante-firma.ts                      # Firma HMAC de la URL pública del comprobante
+    ├── rate-limit.ts                             # Ventana fija en memoria, por IP
+    ├── http.ts                                   # Escape de CSV y nombres de archivo seguros
     ├── email.ts                                  # Envío del comprobante por SMTP (nodemailer)
     └── concurso-status.ts                        # Estados y etiquetas de concurso
+
 prisma/
 ├── schema.prisma                                 # Modelos de datos
 └── migrations/                                   # Migraciones versionadas
 scripts/
 └── ensure-db.mjs                                 # Crea la base si no existe (entrypoint)
+.dockerignore                                     # Nada de .env, .git ni uploads en la imagen
 docker-entrypoint.sh                              # ensure-db → migrate deploy → server
 Dockerfile                                        # Build multi-stage (standalone)
 ```
+
+`src/proxy.ts` es el middleware de Next 16 (renombrado desde `middleware.ts`): intercepta `/admin/:path*` y `/api/admin/:path*` y responde 401 en las APIs, o redirige en las páginas, cuando no hay sesión. La barrera de rol (`requireAdmin`) corre además dentro de cada página, action y route, así que el panel sigue protegido si el middleware se salta o cambia de matcher.
+
+Los tests están junto al código: `lib/*.test.ts` y `actions/postulantes.test.ts`.
 
 ### Flujo de inscripción
 
@@ -344,14 +382,14 @@ Dockerfile                                        # Build multi-stage (standalon
 2. En `/inscripcion/[concursoId]` lee el texto legal, completa sus datos, adjunta los 4 PDFs y acepta las declaraciones juradas.
 3. La Server Action `inscribirPostulante` valida campos, largos, tipos y firma PDF (`%PDF-`), controla la tasa por IP, crea primero el registro y después escribe los archivos en disco (si la escritura falla, revierte la fila).
 4. Redirige a `/inscripcion/[concursoId]/confirmacion` con el ID del postulante.
-5. El comprobante PDF (`/api/comprobante/[postulanteId]?t=<firma>`) incluye un **código QR** con la URL de verificación, que ahora lleva una firma HMAC.
+5. El comprobante PDF (`/api/comprobante/[postulanteId]?t=<firma>`) incluye un **código QR** con la URL de verificación firmada.
 
 Un DNI que ya figura inscrito produce un mensaje genérico: saber *quién* se presentó a un concurso es dato sensible, y el formulario es público.
 
 ### Seguridad
 
 - Panel `/admin/*` y `/api/admin/*` protegidos por NextAuth v5 con sesiones en base de datos. La barrera es doble: el proxy rechaza la falta de sesión **y** cada página/action/route verifica `session.user.role === 'ADMIN'`.
-- Login por whitelist: sólo el `ADMIN_EMAIL` inicial o usuarios ya registrados pueden ingresar. Con `AUTH_ALLOWED_DOMAINS` se restringe además el dominio de la cuenta Google.
+- Login por whitelist: sólo el `ADMIN_EMAIL` inicial o usuarios ya registrados pueden ingresar. Con `AUTH_ALLOWED_DOMAINS` se restringe además el dominio de la cuenta Google, comparando por sufijo sobre la raíz (`unt.edu.ar` incluye `face.unt.edu.ar`, pero no `unt.edu.ar.evil.com`). Los rechazos quedan en el log del servidor con el motivo: dominio o whitelist.
 - Las rutas de descarga y export verifican rol y devuelven **401** sin autenticación.
 - `/api/comprobante/[id]` es público por diseño (el postulante no tiene alta), pero exige `?t=` firma HMAC del `AUTH_SECRET`: la clave primaria deja de ser la credencial y rotar el secreto revoca todos los enlaces emitidos.
 - Los PDFs se validan por contenido, no por `type`/extensión, y se sirven con nombre de archivo saneado y `Content-Disposition: attachment`.
@@ -359,3 +397,13 @@ Un DNI que ya figura inscrito produce un mensaje genérico: saber *quién* se pr
 - Eliminar un concurso borra también sus PDFs del disco, no sólo las filas.
 - Encabezados `CSP`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: same-origin`, `HSTS` y `Permissions-Policy` en `next.config.ts`.
 - El formulario de inscripción limita intentos por IP (`RATE_LIMIT_MAX` cada `RATE_LIMIT_VENTANA_MIN` minutos). El contador vive en memoria del proceso: con más de una réplica es por réplica; para un límite real agregá un backend compartido (Redis) o el límite del proxy inverso.
+
+### Limitaciones aceptadas
+
+Decisiones conscientemente tomadas, para no re-descubirlas en una auditoría futura:
+
+- **`'unsafe-inline'` en `script-src` y `style-src`.** Next 16 con Turbopack emite scripts y estilos en línea en el HTML renderizado; sin el permiso la aplicación se rompe. La CSP igual cierra `object-src`, `base-uri`, `frame-ancestors` y `form-action`.
+- **`allowDangerousEmailAccountLinking: true`.** Necesario para que una cuenta Google coincida con el usuario que el administrador dio de alta antes del primer login. El riesgo real lo contiene la whitelist de `User` (y `AUTH_ALLOWED_DOMAINS`), no este flag.
+- **Enlace del comprobante sin sesión.** Es el único acceso que un postulante anónimo puede necesitar, por eso está firmado en lugar de autenticado. Quien tenga el enlace completo puede ver ese comprobante: no lo publiques ni lo compartas.
+- **Límite de tasa en memoria.** Simple y sin dependencias, a cambio de ser por proceso. Aceptar esto implica que el DoS volumétrico lo absorbe el proxy inverso, no la app.
+- **`npm audit` deja 4 advertencias altas**, todas la misma cadena de `nodemailer@8.0.11` (una copia deduped que comparten la app, `@auth/core` y `next-auth`). No existe versión parchada dentro del rango que acepta `next-auth@5.0.0-beta.32` (`^7.0.7 || ^8.0.5`): los fixes están en 10.x y saltar ahí rompe el peer. Los avisos no son alcanzables en este flujo: sólo se envía a la dirección que el propio postulante escribió, validada por regex y topada en 254 caracteres; `to` va como cadena, no como array anidado; no se usa `raw` ni `resolveContent`; y el transporte SMTP es uno solo cacheado, sin mezcla de tenants. Quitar `SMTP_*` elimina el vector por completo.
