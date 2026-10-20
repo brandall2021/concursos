@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/guards'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { buttonClassName } from '@/components/ui/Button'
@@ -45,6 +46,7 @@ export default async function AdminConcursosPage({
 }: {
   searchParams: SearchParams
 }) {
+  await requireAdmin()
   const sp = await searchParams
   const q = primer(sp.q)
   const catedra = primer(sp.catedra)

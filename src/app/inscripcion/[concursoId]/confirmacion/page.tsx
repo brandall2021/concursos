@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
+import { firmaComprobante } from '@/lib/comprobante-firma'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 import Link from 'next/link'
@@ -71,7 +72,7 @@ export default async function ConfirmacionPage({
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <a
-              href={`/api/comprobante/${postulante.id}`}
+              href={`/api/comprobante/${postulante.id}?t=${firmaComprobante(postulante.id)}`}
               download
               className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-face-red px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-face-red focus:ring-offset-2"
             >

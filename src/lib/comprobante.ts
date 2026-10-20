@@ -3,6 +3,7 @@ import path from 'node:path'
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import { CARGO_LABELS } from './concurso-status'
+import { urlComprobante } from './comprobante-firma'
 
 export type ComprobantePostulante = {
   id: string
@@ -29,7 +30,7 @@ async function leerLogo(): Promise<Buffer | null> {
   ]
   for (const p of candidatos) {
     try {
-      return await readFile(p)
+      return await readFile(/* turbopackIgnore: true */ p)
     } catch {
       // continuar
     }
@@ -47,7 +48,7 @@ export function construirContenidoQr(postulante: ComprobantePostulante, baseUrl?
     `Inscripto el: ${postulante.fechaInscripcion.toLocaleString('es-AR')}`,
   ]
   if (baseUrl) {
-    lineas.push(`Comprobante: ${baseUrl.replace(/\/$/, '')}/api/comprobante/${postulante.id}`)
+    lineas.push(`Comprobante: ${urlComprobante(postulante.id, baseUrl)}`)
   }
   return lineas.join('\n')
 }

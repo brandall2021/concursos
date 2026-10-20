@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/guards'
 import { notFound } from 'next/navigation'
 import { ExportButtons } from '@/components/ExportButtons'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
@@ -16,6 +17,7 @@ const CAMPOS_LABEL: Record<CampoDocumento, string> = {
 }
 
 export default async function PostulantesPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin()
   const { id } = await params
   const concurso = await prisma.concurso.findUnique({
     where: { id },

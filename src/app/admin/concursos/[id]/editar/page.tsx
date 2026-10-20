@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/guards'
 import { updateConcurso } from '@/actions/concursos'
 import { ConcursoForm } from '@/components/ConcursoForm'
 import { notFound } from 'next/navigation'
@@ -10,6 +11,7 @@ function toDatetimeLocal(date: Date) {
 }
 
 export default async function EditarConcursoPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin()
   const { id } = await params
   const concurso = await prisma.concurso.findUnique({ where: { id } })
   if (!concurso) notFound()

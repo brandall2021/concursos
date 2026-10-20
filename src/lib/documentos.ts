@@ -30,7 +30,19 @@ export function esPdfValido(file: Pick<File, 'type' | 'name'>): boolean {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
 }
 
-export function validarPdf(value: FormDataEntryValue | null, campo: CampoDocumento): { ok: true; file: File } | { ok: false; error: string } {
+const FIRMA_PDF = '%PDF-'
+
+// type y name los eligió quien sube; la firma la puso quien generó el archivo.
+export async function tieneFirmaPdf(file: Blob): Promise<boolean> {
+  const cabecera = new Uint8Array(await file.slice(0, FIRMA_PDF.length).arrayBuffer())
+  if (cabecera.length < FIRMA_PDF.length) return false
+  return [...FIRMA_PDF].every((char, i) => cabecera[i] === char.charCodeAt(0))
+}
+
+export async function validarPdf(
+  value: FormDataEntryValue | null,
+  campo: CampoDocumento
+): Promise<{ ok: true; file: File } | { ok: false; error: string }> {
   const nombre = NOMBRES_DOCUMENTO[campo]
   const max = LIMITES[campo]
 
@@ -45,6 +57,10 @@ export function validarPdf(value: FormDataEntryValue | null, campo: CampoDocumen
 
   if (file.size > max) {
     return { ok: false, error: `${nombre} supera el máximo de ${formatearBytes(max)}.` }
+  }
+
+  if (!(await tieneFirmaPdf(file))) {
+    return { ok: false, error: `${nombre} no es un PDF válido.` }
   }
 
   return { ok: true, file }

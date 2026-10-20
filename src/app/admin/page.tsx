@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/guards'
 import Link from 'next/link'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 
 export default async function AdminDashboard() {
+  await requireAdmin()
   const now = new Date()
   const [totalConcursos, totalPostulantes, concursosActivos, recientes] = await Promise.all([
     prisma.concurso.count(),

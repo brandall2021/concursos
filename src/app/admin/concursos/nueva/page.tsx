@@ -1,8 +1,11 @@
 import { ConcursoForm } from '@/components/ConcursoForm'
 import { createConcurso } from '@/actions/concursos'
+import { requireAdmin } from '@/lib/guards'
 import Link from 'next/link'
 
-export default function NuevoConcursoPage() {
+export default async function NuevoConcursoPage() {
+  await requireAdmin()
+
   return (
     <div className="max-w-3xl space-y-6">
       <header>

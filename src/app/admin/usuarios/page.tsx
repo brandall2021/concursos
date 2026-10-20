@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/guards'
 import { addUsuario } from '@/actions/usuarios'
 import { UsuariosTable } from '@/components/UsuariosTable'
 import { Input } from '@/components/ui/Input'
@@ -11,7 +11,7 @@ async function handleAddUsuario(formData: FormData) {
 }
 
 export default async function UsuariosPage() {
-  const session = await auth()
+  const session = await requireAdmin()
   const usuarios = await prisma.user.findMany({ orderBy: { createdAt: 'asc' } })
 
   return (

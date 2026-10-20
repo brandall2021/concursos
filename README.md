@@ -43,6 +43,9 @@ Copiar `.env.example` a `.env` y completar los valores.
 | `GOOGLE_CLIENT_ID` / `AUTH_GOOGLE_ID` | Sí | Client ID de Google OAuth (se acepta el prefijo `AUTH_GOOGLE_*` o `GOOGLE_*`) |
 | `GOOGLE_CLIENT_SECRET` / `AUTH_GOOGLE_SECRET` | Sí | Client Secret de Google OAuth |
 | `ADMIN_EMAIL` | Sí | Email del primer administrador (whitelist del login con Google) |
+| `AUTH_ALLOWED_DOMAINS` | No | Dominios Google permitidos, separados por coma (p. ej. `unt.edu.ar,edu.ar`). Vacío = sin restricción de dominio |
+| `RATE_LIMIT_MAX` | No | Inscripciones por IP dentro de la ventana. Por defecto `5` |
+| `RATE_LIMIT_VENTANA_MIN` | No | Duración de la ventana en minutos. Por defecto `60` |
 | `UPLOAD_DIR` | No | Directorio de almacenamiento de PDFs. Por defecto `./uploads`; en producción `/app/uploads` |
 | `SMTP_HOST` | No | Servidor SMTP para enviar el comprobante por email. Si falta, no se envía correo |
 | `SMTP_PORT` | No | Puerto SMTP (típico `587` o `465`) |
@@ -185,6 +188,10 @@ GOOGLE_CLIENT_ID=<desde Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<desde Google Cloud Console>
 
 ADMIN_EMAIL=concursos@face.unt.edu.ar
+AUTH_ALLOWED_DOMAINS=unt.edu.ar,edu.ar
+
+RATE_LIMIT_MAX=5
+RATE_LIMIT_VENTANA_MIN=60
 
 UPLOAD_DIR=/app/uploads
 
@@ -335,12 +342,20 @@ Dockerfile                                        # Build multi-stage (standalon
 
 1. El postulante accede a `/` y ve los llamados con inscripción abierta.
 2. En `/inscripcion/[concursoId]` lee el texto legal, completa sus datos, adjunta los 4 PDFs y acepta las declaraciones juradas.
-3. La Server Action `inscribirPostulante` valida campos, tipos y tamaños, guarda los archivos en disco y crea el registro (con manejo de DNI duplicado `P2002`).
+3. La Server Action `inscribirPostulante` valida campos, largos, tipos y firma PDF (`%PDF-`), controla la tasa por IP, crea primero el registro y después escribe los archivos en disco (si la escritura falla, revierte la fila).
 4. Redirige a `/inscripcion/[concursoId]/confirmacion` con el ID del postulante.
-5. El comprobante PDF (`/api/comprobante/[postulanteId]`) incluye un **código QR** con la URL de verificación.
+5. El comprobante PDF (`/api/comprobante/[postulanteId]?t=<firma>`) incluye un **código QR** con la URL de verificación, que ahora lleva una firma HMAC.
+
+Un DNI que ya figura inscrito produce un mensaje genérico: saber *quién* se presentó a un concurso es dato sensible, y el formulario es público.
 
 ### Seguridad
 
-- Panel `/admin/*` protegido por NextAuth v5 con sesiones en base de datos.
-- Login por whitelist: sólo el `ADMIN_EMAIL` inicial o usuarios ya registrados pueden ingresar.
-- Las rutas de descarga y export verifican la sesión y devuelven **401** sin autenticación.
+- Panel `/admin/*` y `/api/admin/*` protegidos por NextAuth v5 con sesiones en base de datos. La barrera es doble: el proxy rechaza la falta de sesión **y** cada página/action/route verifica `session.user.role === 'ADMIN'`.
+- Login por whitelist: sólo el `ADMIN_EMAIL` inicial o usuarios ya registrados pueden ingresar. Con `AUTH_ALLOWED_DOMAINS` se restringe además el dominio de la cuenta Google.
+- Las rutas de descarga y export verifican rol y devuelven **401** sin autenticación.
+- `/api/comprobante/[id]` es público por diseño (el postulante no tiene alta), pero exige `?t=` firma HMAC del `AUTH_SECRET`: la clave primaria deja de ser la credencial y rotar el secreto revoca todos los enlaces emitidos.
+- Los PDFs se validan por contenido, no por `type`/extensión, y se sirven con nombre de archivo saneado y `Content-Disposition: attachment`.
+- El export CSV neutraliza preficios de fórmula (`= + - @ tab CR`) para que Excel/LibreOffice no evalúen celdas escritas por postulantes.
+- Eliminar un concurso borra también sus PDFs del disco, no sólo las filas.
+- Encabezados `CSP`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: same-origin`, `HSTS` y `Permissions-Policy` en `next.config.ts`.
+- El formulario de inscripción limita intentos por IP (`RATE_LIMIT_MAX` cada `RATE_LIMIT_VENTANA_MIN` minutos). El contador vive en memoria del proceso: con más de una réplica es por réplica; para un límite real agregá un backend compartido (Redis) o el límite del proxy inverso.
