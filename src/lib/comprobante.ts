@@ -24,8 +24,8 @@ export type ComprobantePostulante = {
 
 async function leerLogo(): Promise<Buffer | null> {
   const candidatos = [
-    path.join(process.cwd(), 'public', 'logo-unt-face.png'),
-    path.join(process.cwd(), '.next', 'standalone', 'public', 'logo-unt-face.png'),
+    path.join(process.cwd(), 'public', 'logo-header-dark.png'),
+    path.join(process.cwd(), '.next', 'standalone', 'public', 'logo-header-dark.png'),
   ]
   for (const p of candidatos) {
     try {
@@ -70,8 +70,11 @@ export async function generarComprobantePdf(
     doc.on('end', resolve)
 
     if (logoBuffer) {
-      doc.image(logoBuffer, 60, 45, { fit: [220, 74] })
-      doc.moveDown(6)
+      const bandaAlto = 90
+      doc.rect(0, 0, doc.page.width, bandaAlto).fill('#1f3763')
+      doc.image(logoBuffer, 60, 22, { fit: [300, bandaAlto - 44], align: 'center', valign: 'center' })
+      doc.fillColor('black')
+      doc.y = bandaAlto + 30
     }
 
     doc.fontSize(20).font('Helvetica-Bold').text('Comprobante de Inscripción', { align: 'center' })
