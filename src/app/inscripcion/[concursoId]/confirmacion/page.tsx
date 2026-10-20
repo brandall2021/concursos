@@ -26,7 +26,7 @@ export default async function ConfirmacionPage({
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-gray-900 sm:px-6">
       <section className="mx-auto max-w-2xl overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
         <div className="h-2 bg-face-red" />
-        <div className="border-b border-gray-200 px-6 py-5 sm:px-8">
+        <div className="bg-face-blue px-6 py-5 sm:px-8">
           <InstitutionalBrand compact />
         </div>
         <div className="p-6 sm:p-8">

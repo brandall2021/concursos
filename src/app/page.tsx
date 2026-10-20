@@ -19,11 +19,11 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-gray-900">
-      <section className="border-b border-gray-200 bg-white">
+      <section className="bg-face-blue">
         <div className="h-2 bg-face-red" />
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <InstitutionalBrand />
-          <Link href="/admin/login" className="text-sm font-semibold text-face-blue hover:text-face-red">
+          <Link href="/admin/login" className="text-sm font-semibold text-white/90 hover:text-face-gold">
             Acceso administrativo
           </Link>
         </div>

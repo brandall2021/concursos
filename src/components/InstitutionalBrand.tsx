@@ -4,13 +4,12 @@ export function InstitutionalBrand({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center">
       <Image
-        src="/logo-unt-face.png"
+        src="/logo-header-dark.png"
         alt="Universidad Nacional de Tucumán — Facultad de Ciencias Económicas"
-        width={compact ? 180 : 320}
-        height={compact ? 61 : 108}
+        width={compact ? 190 : 330}
+        height={compact ? 43 : 75}
         priority
-        className={compact ? 'h-auto w-[180px]' : 'h-auto w-[320px]'}
-        style={{ width: 'auto', height: 'auto' }}
+        className={compact ? 'h-auto w-[190px]' : 'h-auto w-[330px]'}
       />
     </div>
   )

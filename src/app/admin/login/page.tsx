@@ -6,11 +6,11 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <section className="w-full max-w-md overflow-hidden rounded-md border border-gray-200 bg-white text-center shadow-sm">
         <div className="h-2 bg-face-red" />
+        <div className="flex justify-center bg-face-blue px-8 py-6">
+          <InstitutionalBrand compact />
+        </div>
         <div className="px-8 py-8">
-          <div className="flex justify-center">
-            <InstitutionalBrand compact />
-          </div>
-          <p className="mt-8 text-sm font-semibold uppercase tracking-wide text-face-red">Acceso administrativo</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-face-red">Acceso administrativo</p>
           <h1 className="mt-2 text-2xl font-bold text-face-blue">Panel de concursos</h1>
           <p className="mt-2 text-sm leading-6 text-gray-500">Ingresá con una cuenta Google autorizada.</p>
           <form

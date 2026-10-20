@@ -24,11 +24,11 @@ export default async function InscripcionPage({ params }: { params: Promise<{ co
 
   return (
     <main className="min-h-screen bg-slate-50 text-gray-900">
-      <header className="border-b border-gray-200 bg-white">
+      <header className="bg-face-blue">
         <div className="h-2 bg-face-red" />
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
           <InstitutionalBrand compact />
-          <Link href="/" className="text-sm font-semibold text-face-blue hover:text-face-red">
+          <Link href="/" className="text-sm font-semibold text-white/90 hover:text-face-gold">
             Volver a los llamados
           </Link>
         </div>
