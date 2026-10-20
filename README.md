@@ -44,6 +44,11 @@ Copiar `.env.example` a `.env` y completar los valores.
 | `GOOGLE_CLIENT_SECRET` / `AUTH_GOOGLE_SECRET` | Sí | Client Secret de Google OAuth |
 | `ADMIN_EMAIL` | Sí | Email del primer administrador (whitelist del login con Google) |
 | `UPLOAD_DIR` | No | Directorio de almacenamiento de PDFs. Por defecto `./uploads`; en producción `/app/uploads` |
+| `SMTP_HOST` | No | Servidor SMTP para enviar el comprobante por email. Si falta, no se envía correo |
+| `SMTP_PORT` | No | Puerto SMTP (típico `587` o `465`) |
+| `SMTP_SECURE` | No | `true` para TLS implícito (puerto 465). Por defecto se infiere del puerto |
+| `SMTP_USER` / `SMTP_PASSWORD` | No | Credenciales SMTP (si el servidor requiere autenticación) |
+| `SMTP_FROM` | No | Remitente, p. ej. `Concursos Docentes <no-reply@face.unt.edu.ar>` |
 
 > **Nota:** el login admite tanto `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (convención NextAuth v5) como `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (convención clásica).
 
@@ -63,6 +68,25 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 Los archivos se guardan en disco bajo `UPLOAD_DIR`, en una carpeta por postulante (`<postulanteId>/<campo>.pdf`). **En producción debe montarse un volumen persistente**, de lo contrario la documentación se pierde en cada redeploy.
 
 El límite de subida de las Server Actions está configurado en `250 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`).
+
+---
+
+## Notificación por email
+
+Al completar la inscripción, el sistema envía automáticamente al postulante un correo con el **comprobante en PDF adjunto** y un enlace de descarga. El envío se realiza por **SMTP** (nodemailer) y es **opcional**: si no se configuran las variables `SMTP_*`, la inscripción funciona igual pero no se envía el correo (se registra un aviso en el log del servidor).
+
+Variables necesarias:
+
+```env
+SMTP_HOST=smtp.tu-servidor.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=usuario@tu-servidor.com
+SMTP_PASSWORD=tu-password
+SMTP_FROM=Concursos Docentes <no-reply@face.unt.edu.ar>
+```
+
+El envío se hace en segundo plano tras crear el registro; si el SMTP falla, la inscripción **no** se pierde ni se revierte.
 
 ---
 
@@ -163,6 +187,14 @@ GOOGLE_CLIENT_SECRET=<desde Google Cloud Console>
 ADMIN_EMAIL=concursos@face.unt.edu.ar
 
 UPLOAD_DIR=/app/uploads
+
+# Opcional — envío del comprobante por email
+SMTP_HOST=smtp.tu-servidor.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=usuario@tu-servidor.com
+SMTP_PASSWORD=tu-password
+SMTP_FROM=Concursos Docentes <no-reply@face.unt.edu.ar>
 ```
 
 > Para `AUTH_SECRET`: `openssl rand -base64 32`.
@@ -287,6 +319,8 @@ src/
     ├── prisma.ts                                 # Cliente Prisma (singleton)
     ├── documentos.ts                             # Constantes y validación PDF (client-safe)
     ├── uploads.ts                                # FS server-only (guardar/limpiar/resolver)
+    ├── comprobante.ts                            # Generación del PDF del comprobante (con QR y logo)
+    ├── email.ts                                  # Envío del comprobante por SMTP (nodemailer)
     └── concurso-status.ts                        # Estados y etiquetas de concurso
 prisma/
 ├── schema.prisma                                 # Modelos de datos

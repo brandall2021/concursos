@@ -24,7 +24,19 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/concurso-status', () => ({ isConcursoActivo: vi.fn() }))
+vi.mock('@/lib/concurso-status', () => ({
+  isConcursoActivo: vi.fn(),
+  CARGO_LABELS: { Titular: 'Profesor Titular', Asociado: 'Profesor Asociado', Adjunto: 'Profesor Adjunto' },
+}))
+
+vi.mock('@/lib/comprobante', () => ({
+  generarComprobantePdf: vi.fn().mockResolvedValue(Buffer.from('pdf')),
+}))
+
+vi.mock('@/lib/email', () => ({
+  smtpConfigurado: vi.fn().mockReturnValue(false),
+  enviarComprobantePorEmail: vi.fn(),
+}))
 
 vi.mock('@/lib/uploads', async () => {
   const actual = await vi.importActual<typeof import('@/lib/uploads')>('@/lib/uploads')

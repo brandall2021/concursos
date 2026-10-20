@@ -1,8 +1,10 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { isConcursoActivo } from '@/lib/concurso-status'
+import { isConcursoActivo, CARGO_LABELS } from '@/lib/concurso-status'
 import { revalidatePath } from 'next/cache'
+import { generarComprobantePdf } from '@/lib/comprobante'
+import { enviarComprobantePorEmail, smtpConfigurado } from '@/lib/email'
 import {
   CAMPOS_DOCUMENTO,
   guardarArchivos,
@@ -79,7 +81,11 @@ export async function inscribirPostulante(formData: FormData): Promise<Postulant
         cvPath: paths.cv,
         antecedentesPath: paths.antecedentes,
       },
+      include: { concurso: true },
     })
+
+    await enviarComprobante(postulante.id)
+
     revalidatePath(`/admin/concursos/${concursoId}/postulantes`)
     return { success: true, postulanteId: postulante.id }
   } catch (e: unknown) {
@@ -89,5 +95,34 @@ export async function inscribirPostulante(formData: FormData): Promise<Postulant
       return { success: false, error: 'Ya registramos una inscripción tuya en este concurso con ese DNI' }
     }
     return { success: false, error: 'Error interno. Intentá nuevamente.' }
+  }
+}
+
+async function enviarComprobante(postulanteId: string): Promise<void> {
+  if (!smtpConfigurado()) return
+
+  const postulante = await prisma.postulante.findUnique({
+    where: { id: postulanteId },
+    include: { concurso: true },
+  })
+  if (!postulante) return
+
+  const baseUrl = process.env.AUTH_URL
+  try {
+    const pdf = await generarComprobantePdf(postulante, { baseUrl })
+    const cargo = CARGO_LABELS[postulante.concurso.cargo] ?? postulante.concurso.cargo
+    await enviarComprobantePorEmail({
+      to: postulante.email,
+      nombrePostulante: `${postulante.apellidos}, ${postulante.nombres}`,
+      numeroExpediente: postulante.concurso.numeroExpediente,
+      cargo,
+      pdf,
+      nombreArchivo: `comprobante-${postulante.dni}.pdf`,
+      comprobanteUrl: baseUrl
+        ? `${baseUrl.replace(/\/$/, '')}/api/comprobante/${postulante.id}`
+        : undefined,
+    })
+  } catch (e) {
+    console.error('[email] No se pudo enviar el comprobante:', e)
   }
 }

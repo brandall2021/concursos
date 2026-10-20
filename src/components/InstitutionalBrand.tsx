@@ -2,21 +2,16 @@ import Image from 'next/image'
 
 export function InstitutionalBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center">
       <Image
-        src="/logo-face.png"
-        alt="Facultad de Ciencias Económicas - Universidad Nacional de Tucumán"
-        width={compact ? 150 : 230}
-        height={compact ? 46 : 70}
+        src="/logo-unt-face.png"
+        alt="Universidad Nacional de Tucumán — Facultad de Ciencias Económicas"
+        width={compact ? 180 : 320}
+        height={compact ? 61 : 108}
         priority
-        className={compact ? 'h-auto w-[150px]' : 'h-auto w-[230px]'}
+        className={compact ? 'h-auto w-[180px]' : 'h-auto w-[320px]'}
+        style={{ width: 'auto', height: 'auto' }}
       />
-      {!compact && (
-        <div className="hidden border-l border-gray-200 pl-4 sm:block">
-          <p className="text-xs font-semibold uppercase tracking-wide text-face-red">Universidad Nacional de Tucumán</p>
-          <p className="text-sm font-semibold text-gray-700">Concursos Docentes · Titulares, Asociados y Adjuntos</p>
-        </div>
-      )}
     </div>
   )
 }

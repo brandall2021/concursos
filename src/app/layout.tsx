@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: 'Inscripción a Concursos Docentes | FACE UNT',
   description:
     'Formulario Único de Inscripción Digital a Concursos de Docentes para las categorías de Profesores Titulares, Asociados y Adjuntos - Universidad Nacional de Tucumán',
+  icons: {
+    icon: '/face.png',
+    apple: '/face.png',
+  },
 }
 
 export default function RootLayout({
