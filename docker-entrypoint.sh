@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+if [ "$(id -u)" = "0" ]; then
+  mkdir -p "$UPLOAD_DIR"
+  chown -R nextjs:nodejs "$UPLOAD_DIR"
+  exec su-exec nextjs:nodejs "$0" "$@"
+fi
+
 echo "[entrypoint] Asegurando base de datos..."
 node scripts/ensure-db.mjs
 

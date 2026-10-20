@@ -27,9 +27,10 @@ export async function GET(
   if (!postulante) return new NextResponse('No encontrado', { status: 404 })
 
   const relativa = postulante[CAMPO_A_PATH[campo as CampoDocumento]]
+  const ruta = resolverArchivo(relativa)
 
   try {
-    const buffer = await readFile(resolverArchivo(relativa))
+    const buffer = await readFile(ruta)
     const nombre = `${postulante.dni}-${campo}.pdf`
     return new NextResponse(buffer, {
       headers: {
@@ -38,7 +39,8 @@ export async function GET(
         'X-Documento': NOMBRES_DOCUMENTO[campo as CampoDocumento],
       },
     })
-  } catch {
-    return new NextResponse('Documento no disponible', { status: 404 })
+  } catch (e) {
+    console.error(`[documentos] No se pudo leer "${ruta}" (UPLOAD_DIR=${process.env.UPLOAD_DIR ?? 'default'}):`, e)
+    return new NextResponse('El documento no está disponible en el servidor. Si el contenedor fue reconstruido, configurá un volumen persistente para /app/uploads.', { status: 404 })
   }
 }
