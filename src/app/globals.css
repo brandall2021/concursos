@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --face-red: #e30613;
+  --face-blue: #1f3763;
+  --face-gold: #d9a928;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-face-red: var(--face-red);
+  --color-face-blue: var(--face-blue);
+  --color-face-gold: var(--face-gold);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

@@ -1,0 +1,3 @@
+docker-entrypoint.sh text eol=lf
+scripts/*.mjs text eol=lf
+Dockerfile text eol=lf
