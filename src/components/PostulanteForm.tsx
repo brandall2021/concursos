@@ -62,7 +62,8 @@ export function PostulanteForm({ concursoId }: { concursoId: string }) {
           placeholder="12345678"
         />
         <Input
-          label="Correo electrónico"
+          label="Correo electrónico (Campo obligatorio)"
+          id="email"
           name="email"
           type="email"
           required
@@ -70,7 +71,7 @@ export function PostulanteForm({ concursoId }: { concursoId: string }) {
           placeholder="nombre@unt.edu.ar"
         />
         <p className="text-xs leading-5 text-gray-500">
-          Constitución de domicilio electrónico en una casilla personal perteneciente a la institución cuando se trate de docentes o personal de la UNT, o en una personal, donde son válidas y eficaces todas las comunicaciones y notificaciones que se cursen en el trámite del concurso.
+          Constitución de domicilio electrónico en una casilla personal perteneciente a la institución cuando se trate de docentes o personal de la UNT o en una personal, donde son válidas y eficaces todas las comunicaciones y notificaciones que se cursen en el trámite del concurso.
         </p>
       </fieldset>
 
@@ -82,7 +83,7 @@ export function PostulanteForm({ concursoId }: { concursoId: string }) {
           name="solicitud"
           maxBytes={LIMITE_SOLICITUD}
           required
-          ayuda="Dirigida al Decano/a, con especificación de área, o disciplina/s asignatura/s del cargo al que aspira y detalle de la documentación que adjunta."
+          ayuda="La solicitud de inscripción debe estar dirigida al Decano/a, con especificación de área, o disciplina/s asignatura/s del cargo al que aspira y detalle de la documentación que adjunta."
         />
         <FileInput
           label="Documento Nacional de Identidad"
@@ -96,14 +97,14 @@ export function PostulanteForm({ concursoId }: { concursoId: string }) {
           name="cv"
           maxBytes={LIMITE_CV}
           required
-          ayuda="Ver modelo de Curriculum en Anexo II de la Resolución N°: RES - DGAC - 10801 / 2026 del Reglamento General de Concursos Docentes."
+          ayuda="Ver Modelo de Curriculum en Anexo II de la Resolución N°: RES - DGAC - 10801 / 2026 del Reglamento General de Concursos Docentes para las Categorías de Profesores Titulares, Asociados y Adjuntos, de la Universidad Nacional de Tucumán."
         />
         <FileInput
           label="Documentación respaldatoria de los antecedentes"
           name="antecedentes"
           maxBytes={LIMITE_ANTECEDENTES}
           required
-          ayuda="Escaneada en forma completa y legible, respetando nombres, títulos y orden establecidos en el curriculum vitae. Debe corresponderse con exactitud a la documentación original, bajo pena de tenerse por no presentada."
+          ayuda="La documentación respaldatoria de los antecedentes contenidos en el currículum de cada postulante debe adjuntarse escaneada en forma completa y legible, y respetar nombres, títulos y orden establecidos en el currículum vitae. Debe corresponderse con exactitud a la documentación original, bajo pena de tenerse por no presentada."
         />
       </fieldset>
 
