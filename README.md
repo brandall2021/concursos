@@ -2,8 +2,8 @@
 
 Aplicación web para la inscripción digital a concursos docentes (Profesores Titulares, Asociados y Adjuntos) de la Universidad Nacional de Tucumán, conforme al Reglamento General de Concursos Docentes vigente (Resolución N°: RES - DGAC - 10801 / 2026).
 
-- **Postulantes:** ven los llamados con inscripción abierta, seleccionan el concurso, completan sus datos, adjuntan la documentación (solicitud, DNI, CV y respaldatoria de antecedentes) y aceptan las declaraciones juradas. Reciben un comprobante PDF con código QR.
-- **Administradores (Departamento Concursos):** crean, editan y eliminan llamados; consultan postulantes; descargan la documentación y exportan a CSV/PDF. Login con Google OAuth.
+- **Postulantes:** ven los llamados con inscripción abierta, seleccionan el concurso, completan sus datos, adjuntan la documentación (solicitud, DNI, CV y respaldatoria de antecedentes) y aceptan las declaraciones juradas. Reciben un **ID de inscripción de 5 caracteres** y un comprobante PDF con código QR.
+- **Administradores (Departamento Concursos):** crean, editan y eliminan llamados; consultan postulantes, les cargan **observaciones** y descargan la documentación o exportan a CSV/PDF. Login con Google OAuth.
 
 **Stack:** Next.js 16 (App Router, Turbopack) · React 19 · Prisma 5 · PostgreSQL · NextAuth v5 · Tailwind CSS v4 · pdfkit · qrcode · nodemailer · Vitest
 
@@ -14,12 +14,13 @@ Aplicación web para la inscripción digital a concursos docentes (Profesores Ti
 1. [Requisitos](#requisitos)
 2. [Variables de entorno](#variables-de-entorno)
 3. [Documentación requerida por el postulante](#documentación-requerida-por-el-postulante)
-4. [Notificación por email](#notificación-por-email)
-5. [Desarrollo local](#desarrollo-local)
-6. [Base de datos](#base-de-datos)
-7. [Tests y build](#tests-y-build)
-8. [Despliegue en Dokploy](#despliegue-en-dokploy)
-9. [Arquitectura y estructura](#arquitectura-y-estructura)
+4. [ID de inscripción y observaciones](#id-de-inscripción-y-observaciones)
+5. [Notificación por email](#notificación-por-email)
+6. [Desarrollo local](#desarrollo-local)
+7. [Base de datos](#base-de-datos)
+8. [Tests y build](#tests-y-build)
+9. [Despliegue en Dokploy](#despliegue-en-dokploy)
+10. [Arquitectura y estructura](#arquitectura-y-estructura)
 
 ---
 
@@ -48,6 +49,7 @@ Copiar `.env.example` a `.env` y completar los valores.
 | `RATE_LIMIT_MAX` | No | Inscripciones por IP dentro de la ventana. Por defecto `5` |
 | `RATE_LIMIT_VENTANA_MIN` | No | Duración de la ventana en minutos. Por defecto `60` |
 | `UPLOAD_DIR` | No | Directorio de almacenamiento de PDFs. Por defecto `./uploads`; en producción `/app/uploads` |
+| `PORTAL_URL` | No | Dirección que se imprime en el QR del comprobante. Por defecto `https://concursos.face-unt.ar`. Es independiente de `AUTH_URL` |
 | `SMTP_HOST` | No | Servidor SMTP para enviar el comprobante por email. Si falta, no se envía correo |
 | `SMTP_PORT` | No | Puerto SMTP (típico `587` o `465`) |
 | `SMTP_SECURE` | No | `true` para TLS implícito (puerto 465). Por defecto se infiere del puerto |
@@ -74,6 +76,18 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 Los archivos se guardan en disco bajo `UPLOAD_DIR`, en una carpeta por postulante (`<postulanteId>/<campo>.pdf`). **En producción debe montarse un volumen persistente**, de lo contrario la documentación se pierde en cada redeploy.
 
 El límite de subida de las Server Actions está configurado en `250 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`).
+
+---
+
+## ID de inscripción y observaciones
+
+Cada inscripción recibe un **código de 5 caracteres** (`codigoInscripcion`) generado por el sistema con `crypto.randomInt` sobre el alfabeto `ABCDEFGHJKMNPQRSTUVWXYZ`: sin `I`, `L`, `O` ni dígitos, porque `0/O` y `1/I/L` se confunden cuando el código se dicta por teléfono. Son ~6.4M de combinaciones y el índice único de la base es la garantía real: si dos carreras chocan, la acción reintenta con otro código (hasta 5 veces) antes de fallar.
+
+El código aparece en cuatro lugares: la pantalla de confirmación, el encabezado del comprobante PDF, la primera línea del QR y la columna **ID** de la tabla de postulantes. Las búsquedas del panel siguen por nombre/DNI.
+
+La **observación** es una nota interna del Departamento Concursos: se edita desde la tabla de postulantes (`actualizarObservacion`, server action protegida por `requireAdmin`) y viaja en el export CSV y en el PDF, donde se imprime indentada debajo del postulante. No figura en el comprobante que descarga el interesado.
+
+El QR del comprobante lleva además la dirección del portal (`PORTAL_URL`, por defecto `https://concursos.face-unt.ar`). Es una variable separada de `AUTH_URL` a propósito: `AUTH_URL` define el dominio de las sesiones y del enlace firmado, y mudar uno no debería cambiar la referencia institucional que escanea un tercero.
 
 ---
 
@@ -125,7 +139,7 @@ Abrir [http://localhost:3000](http://localhost:3000).
 Modelo de datos (Prisma + PostgreSQL):
 
 - **`Concurso`** — `numeroExpediente`, `cargo`, `dedicacion`, `disciplina`, `area?`, `catedra?`, `asignatura`, `fechaApertura`, `fechaCierre`. Los estados (abierto/cerrado/próximo) se calculan según las fechas.
-- **`Postulante`** — datos del postulante (`apellidos`, `nombres`, `dni`, `email`), las 4 rutas de archivo y `fechaInscripcion`. Restricción de unicidad `@@unique([dni, concursoId])`: un mismo DNI no puede inscribirse dos veces al mismo concurso.
+- **`Postulante`** — datos del postulante (`apellidos`, `nombres`, `dni`, `email`), las 4 rutas de archivo, `fechaInscripcion`, `codigoInscripcion` y `observacion?` (nota interna del administrador, máx. 2000 caracteres). Restricción de unicidad `@@unique([dni, concursoId])`: un mismo DNI no puede inscribirse dos veces al mismo concurso.
 - **`User` / `Account` / `Session` / `VerificationToken`** — modelo estándar de NextAuth v5 (sesiones en base de datos).
 
 ### Migraciones
@@ -138,6 +152,8 @@ npx prisma studio             # explorador visual de la base
 
 > El entrypoint del contenedor ejecuta `prisma migrate deploy` automáticamente en cada arranque.
 
+> `20261021150000_codigo_inscripcion_y_observacion` agrega `codigoInscripcion` (único) y `observacion` a `Postulante` y **rellena el código de los postulantes ya inscriptos** con un bloque `DO $$` de Postgres. No hace falta intervenir manualmente, pero una vez aplicado no hay vuelta atrás: los códigos asignados a los registros existentes son los que quedan.
+
 ---
 
 ## Tests y build
@@ -149,7 +165,7 @@ npm run build     # build de producción (Next.js standalone)
 npm run start     # servir el build de producción
 ```
 
-Los tests viven junto al código (`*.test.ts`) y cubren las reglas que no conviene revalidar a mano: contención de rutas y validación por firma `%PDF` en `lib/uploads`, neutralización de fórmulas y nombres de archivo en `lib/http` (donde también se prueba la firma HMAC del comprobante), la ventana fija del limitador en `lib/rate-limit`, los estados de concurso y el flujo completo de `inscribirPostulante` (validaciones, límite por IP y reversión de archivos huérfanos).
+Los tests viven junto al código (`*.test.ts`) y cubren las reglas que no conviene revalidar a mano: contención de rutas y validación por firma `%PDF` en `lib/uploads`, neutralización de fórmulas y nombres de archivo en `lib/http` (donde también se prueba la firma HMAC del comprobante), la ventana fija del limitador en `lib/rate-limit`, el alfabeto y la colisión del código de inscripción en `lib/codigo-inscripcion`, el matching por sufijo de `lib/dominios`, los estados de concurso, la guard de `actualizarObservacion` y el flujo completo de `inscribirPostulante` (validaciones, límite por IP, reintento de código y reversión de archivos huérfanos).
 
 > El build no debe dejar advertencias: un `readFile` con ruta dinámica sin `/* turbopackIgnore: true */` en `lib/comprobante.ts` traza todo el proyecto al standalone y terminaría filtrando `.env` dentro de la imagen.
 
@@ -203,6 +219,7 @@ RATE_LIMIT_MAX=5
 RATE_LIMIT_VENTANA_MIN=60
 
 UPLOAD_DIR=/app/uploads
+PORTAL_URL=https://concursos.face-unt.ar
 
 # Opcional — envío del comprobante por email
 SMTP_HOST=smtp.tu-servidor.com
@@ -338,10 +355,13 @@ src/
 ├── actions/                                      # Server Actions
 │   ├── concursos.ts                              # create / update / delete
 │   ├── postulantes.ts                            # inscribirPostulante (validación + guardado)
+│   ├── observaciones.ts                          # actualizarObservacion (notas del panel)
 │   └── usuarios.ts                               # Alta/baja de administradores
 ├── components/                                   # Componentes React
 │   ├── ConcursoForm.tsx / ConcursoSelect.tsx / ConcursoStatusBadge.tsx
 │   ├── PostulanteForm.tsx                        # Formulario público (4 archivos)
+│   ├── ObservacionEditor.tsx                     # Edición inline de la observación
+│   ├── Footer.tsx                                # Pie institucional de las páginas públicas
 │   ├── ExportButtons.tsx / DeleteConcursoButton.tsx / UsuariosTable.tsx
 │   ├── InstitutionalBrand.tsx                    # Marca UNT
 │   ├── ConcursoFilters.tsx                       # Filtros de búsqueda del panel
@@ -354,6 +374,8 @@ src/
     ├── prisma.ts                                 # Cliente Prisma (singleton)
     ├── documentos.ts                             # Constantes y validación PDF (client-safe)
     ├── dominios.ts                               # AUTH_ALLOWED_DOMAINS: casa por sufijo
+    ├── codigo-inscripcion.ts                     # ID de 5 letras + detección de colisión
+    ├── institucion.ts                            # Datos del pie y PORTAL_URL del QR
     ├── uploads.ts                                # FS server-only (guardar/limpiar/resolver)
     ├── comprobante.ts                            # Generación del PDF del comprobante (con QR y logo)
     ├── comprobante-firma.ts                      # Firma HMAC de la URL pública del comprobante
@@ -380,8 +402,8 @@ Los tests están junto al código: `lib/*.test.ts` y `actions/postulantes.test.t
 
 1. El postulante accede a `/` y ve los llamados con inscripción abierta.
 2. En `/inscripcion/[concursoId]` lee el texto legal, completa sus datos, adjunta los 4 PDFs y acepta las declaraciones juradas.
-3. La Server Action `inscribirPostulante` valida campos, largos, tipos y firma PDF (`%PDF-`), controla la tasa por IP, crea primero el registro y después escribe los archivos en disco (si la escritura falla, revierte la fila).
-4. Redirige a `/inscripcion/[concursoId]/confirmacion` con el ID del postulante.
+3. La Server Action `inscribirPostulante` valida campos, largos, tipos y firma PDF (`%PDF-`), controla la tasa por IP, genera el ID de inscripción de 5 letras, crea primero el registro y después escribe los archivos en disco (si la escritura falla, revierte la fila).
+4. Redirige a `/inscripcion/[concursoId]/confirmacion`, que muestra el **ID de inscripción** junto al botón de descarga.
 5. El comprobante PDF (`/api/comprobante/[postulanteId]?t=<firma>`) incluye un **código QR** con la URL de verificación firmada.
 
 Un DNI que ya figura inscrito produce un mensaje genérico: saber *quién* se presentó a un concurso es dato sensible, y el formulario es público.
