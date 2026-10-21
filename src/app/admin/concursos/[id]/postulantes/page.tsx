@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/guards'
 import { notFound } from 'next/navigation'
 import { ExportButtons } from '@/components/ExportButtons'
+import { ObservacionEditor } from '@/components/ObservacionEditor'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 import { NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/uploads'
@@ -56,20 +57,25 @@ export default async function PostulantesPage({ params }: { params: Promise<{ id
       ) : (
         <section className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-sm">
+            <table className="w-full min-w-[1180px] text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
+                  <th className="px-5 py-3">ID</th>
                   <th className="px-5 py-3">Apellido/s</th>
                   <th className="px-5 py-3">Nombre/s</th>
                   <th className="px-5 py-3">DNI</th>
                   <th className="px-5 py-3">Correo</th>
                   <th className="px-5 py-3">Fecha</th>
+                  <th className="px-5 py-3">Observación</th>
                   <th className="px-5 py-3">Documentos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {concurso.postulantes.map((postulante) => (
                   <tr key={postulante.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 font-mono text-sm font-bold tracking-wider text-face-red">
+                      {postulante.codigoInscripcion}
+                    </td>
                     <td className="px-5 py-3 font-semibold text-face-blue">{postulante.apellidos}</td>
                     <td className="px-5 py-3 text-gray-800">{postulante.nombres}</td>
                     <td className="px-5 py-3 text-gray-600">{postulante.dni}</td>
@@ -78,6 +84,9 @@ export default async function PostulantesPage({ params }: { params: Promise<{ id
                       {postulante.fechaInscripcion.toLocaleString('es-AR', {
                         timeZone: 'America/Argentina/Buenos_Aires',
                       })}
+                    </td>
+                    <td className="px-5 py-3 align-top">
+                      <ObservacionEditor postulanteId={postulante.id} observacion={postulante.observacion} />
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap gap-1.5">

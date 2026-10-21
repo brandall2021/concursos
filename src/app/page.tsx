@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { buttonClassName } from '@/components/ui/Button'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
+import { Footer } from '@/components/Footer'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 
@@ -18,7 +19,7 @@ export default async function HomePage() {
   })
 
   return (
-    <main className="min-h-screen bg-slate-50 text-gray-900">
+    <main className="flex min-h-screen flex-col bg-slate-50 text-gray-900">
       <section className="bg-face-blue">
         <div className="h-2 bg-face-red" />
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
@@ -129,6 +130,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </main>
   )
 }

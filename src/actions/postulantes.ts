@@ -8,6 +8,7 @@ import { generarComprobantePdf } from '@/lib/comprobante'
 import { enviarComprobantePorEmail, smtpConfigurado } from '@/lib/email'
 import { urlComprobante } from '@/lib/comprobante-firma'
 import { excedido, ipCliente } from '@/lib/rate-limit'
+import { esColisionDeCodigo, generarCodigoInscripcion } from '@/lib/codigo-inscripcion'
 import {
   CAMPOS_DOCUMENTO,
   guardarArchivos,
@@ -90,30 +91,45 @@ export async function inscribirPostulante(formData: FormData): Promise<Postulant
   const postulanteId = crypto.randomUUID()
   const paths = rutasEsperadas(postulanteId)
 
+  // Con 23 letras y 5 posiciones hay ~6.4M de codigos: colisionar es raro, pero el indice
+  // unico es la unica garantia, asi que reintentamos con otro codigo en vez de fallar.
   let postulante
-  try {
-    postulante = await prisma.postulante.create({
-      data: {
-        id: postulanteId,
-        concursoId,
-        apellidos,
-        nombres,
-        dni,
-        email,
-        solicitudPath: paths.solicitud,
-        dniPath: paths.dniArchivo,
-        cvPath: paths.cv,
-        antecedentesPath: paths.antecedentes,
-      },
-      include: { concurso: true },
-    })
-  } catch (e: unknown) {
-    const err = e as { code?: string }
-    if (err.code === 'P2002') {
-      console.warn(`[inscripcion] DNI ${dni} duplicado en concurso ${concursoId} (carrera)`)
-      return { success: false, error: RECHAZO_GENERICO }
+  for (let intento = 1; intento <= 5; intento++) {
+    try {
+      postulante = await prisma.postulante.create({
+        data: {
+          id: postulanteId,
+          concursoId,
+          codigoInscripcion: generarCodigoInscripcion(),
+          apellidos,
+          nombres,
+          dni,
+          email,
+          solicitudPath: paths.solicitud,
+          dniPath: paths.dniArchivo,
+          cvPath: paths.cv,
+          antecedentesPath: paths.antecedentes,
+        },
+        include: { concurso: true },
+      })
+      break
+    } catch (e: unknown) {
+      if (esColisionDeCodigo(e)) {
+        console.warn(`[inscripcion] Codigo en uso, reintento ${intento} para ${postulanteId}`)
+        continue
+      }
+      if ((e as { code?: string }).code === 'P2002') {
+        // Otra carrera por el dni+concurso: el motivo real queda en el log, no en la pantalla.
+        console.warn(`[inscripcion] DNI ${dni} duplicado en concurso ${concursoId} (carrera)`)
+        return { success: false, error: RECHAZO_GENERICO }
+      }
+      console.error('[inscripcion] Error creando postulante:', e)
+      return { success: false, error: 'Error interno. Intentá nuevamente.' }
     }
-    console.error('[inscripcion] Error creando postulante:', e)
+  }
+
+  if (!postulante) {
+    console.error('[inscripcion] Agotados los reintentos de codigo de inscripcion')
     return { success: false, error: 'Error interno. Intentá nuevamente.' }
   }
 

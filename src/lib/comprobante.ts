@@ -3,10 +3,12 @@ import path from 'node:path'
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import { CARGO_LABELS } from './concurso-status'
+import { URL_PORTAL } from './institucion'
 import { urlComprobante } from './comprobante-firma'
 
 export type ComprobantePostulante = {
   id: string
+  codigoInscripcion: string
   apellidos: string
   nombres: string
   dni: string
@@ -41,6 +43,7 @@ async function leerLogo(): Promise<Buffer | null> {
 export function construirContenidoQr(postulante: ComprobantePostulante, baseUrl?: string): string {
   const cargo = CARGO_LABELS[postulante.concurso.cargo] ?? postulante.concurso.cargo
   const lineas = [
+    `ID inscripción: ${postulante.codigoInscripcion}`,
     `Postulante: ${postulante.apellidos}, ${postulante.nombres}`,
     `DNI: ${postulante.dni}`,
     `Expte: ${postulante.concurso.numeroExpediente}`,
@@ -50,6 +53,7 @@ export function construirContenidoQr(postulante: ComprobantePostulante, baseUrl?
   if (baseUrl) {
     lineas.push(`Comprobante: ${urlComprobante(postulante.id, baseUrl)}`)
   }
+  lineas.push(`Concursos Docentes FACE: ${URL_PORTAL}`)
   return lineas.join('\n')
 }
 
@@ -84,6 +88,12 @@ export async function generarComprobantePdf(
     doc.moveDown(0.8)
     doc.moveTo(60, doc.y).lineTo(535, doc.y).stroke()
     doc.moveDown()
+
+    // Es el identificador que lee el Departamento Concursos; va arriba y en grande.
+    doc.fontSize(15).font('Helvetica-Bold').fillColor('#1f3763')
+    doc.text(`ID de inscripción:  ${postulante.codigoInscripcion}`, { align: 'center' })
+    doc.fillColor('black')
+    doc.moveDown(0.6)
 
     doc.fontSize(13).font('Helvetica')
     doc.text(`Apellido y Nombre:  ${postulante.apellidos}, ${postulante.nombres}`)

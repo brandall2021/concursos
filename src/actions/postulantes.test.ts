@@ -170,6 +170,21 @@ describe('inscribirPostulante', () => {
     )
   })
 
+  it('asigna un codigo de inscripcion de 5 letras sin ambiguos', async () => {
+    const result = await inscribirPostulante(makeFormData())
+    expect(result.success).toBe(true)
+    const data = mockCreate.mock.calls[0][0].data
+    expect(data.codigoInscripcion).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/)
+  })
+
+  it('reintenta con otro codigo cuando el indice unico del codigo choca', async () => {
+    mockCreate.mockRejectedValueOnce({ code: 'P2002', meta: { target: 'Postulante.codigoInscripcion' } })
+    const result = await inscribirPostulante(makeFormData())
+    expect(result).toEqual({ success: true, postulanteId: expect.any(String) })
+    expect(mockCreate).toHaveBeenCalledTimes(2)
+    expect(mockDelete).not.toHaveBeenCalled()
+  })
+
   it('rolls back the row when the files cannot be written', async () => {
     mockGuardar.mockRejectedValueOnce(new Error('disco lleno'))
 

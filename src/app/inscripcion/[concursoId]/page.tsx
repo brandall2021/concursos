@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { isConcursoActivo, etiquetaConcurso, CARGO_LABELS } from '@/lib/concurso-status'
 import { PostulanteForm } from '@/components/PostulanteForm'
+import { Footer } from '@/components/Footer'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { ConcursoSelect } from '@/components/ConcursoSelect'
 import Link from 'next/link'
@@ -23,7 +24,7 @@ export default async function InscripcionPage({ params }: { params: Promise<{ co
   const opciones = abiertos.map((c) => ({ value: c.id, label: etiquetaConcurso(c) }))
 
   return (
-    <main className="min-h-screen bg-slate-50 text-gray-900">
+    <main className="flex min-h-screen flex-col bg-slate-50 text-gray-900">
       <header className="bg-face-blue">
         <div className="h-2 bg-face-red" />
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
@@ -120,6 +121,8 @@ export default async function InscripcionPage({ params }: { params: Promise<{ co
           </div>
         </div>
       </div>
+
+      <Footer />
     </main>
   )
 }

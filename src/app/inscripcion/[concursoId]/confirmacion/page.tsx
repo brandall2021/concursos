@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { firmaComprobante } from '@/lib/comprobante-firma'
+import { Footer } from '@/components/Footer'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 import Link from 'next/link'
@@ -24,7 +25,8 @@ export default async function ConfirmacionPage({
   if (!postulante || postulante.concursoId !== concursoId) notFound()
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-gray-900 sm:px-6">
+    <main className="flex min-h-screen flex-col bg-slate-50 text-gray-900">
+      <div className="flex-1 px-4 py-10 sm:px-6">
       <section className="mx-auto max-w-2xl overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
         <div className="h-2 bg-face-red" />
         <div className="bg-face-blue px-6 py-5 sm:px-8">
@@ -43,6 +45,16 @@ export default async function ConfirmacionPage({
           </div>
 
           <dl className="grid gap-3 rounded-md border border-gray-200 bg-slate-50 p-4">
+            <div className="rounded-md border border-gray-200 bg-white px-4 py-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">ID de inscripción</dt>
+              <dd className="mt-1 font-mono text-2xl font-bold tracking-[0.3em] text-face-blue">
+                {postulante.codigoInscripcion}
+              </dd>
+              <p className="mt-1 text-xs text-gray-500">
+                Conservalo: es el número que te van a pedir en el Departamento Concursos y el que figura en el QR del
+                comprobante.
+              </p>
+            </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Postulante</dt>
               <dd className="mt-1 text-sm font-semibold text-gray-900">
@@ -87,6 +99,9 @@ export default async function ConfirmacionPage({
           </div>
         </div>
       </section>
+      </div>
+
+      <Footer />
     </main>
   )
 }

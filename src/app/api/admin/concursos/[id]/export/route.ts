@@ -32,15 +32,18 @@ export async function GET(
   const cargo = CARGO_LABELS[concurso.cargo] ?? concurso.cargo
 
   if (format === 'csv') {
-    const header = 'Apellido/s,Nombre/s,DNI,Correo electrónico,Fecha de inscripción\n'
+    const header =
+      'ID de inscripción,Apellido/s,Nombre/s,DNI,Correo electrónico,Fecha de inscripción,Observación\n'
     const rows = concurso.postulantes
       .map((p) =>
         [
+          celdaCsv(p.codigoInscripcion),
           celdaCsv(p.apellidos),
           celdaCsv(p.nombres),
           celdaCsv(p.dni),
           celdaCsv(p.email),
           celdaCsv(p.fechaInscripcion.toLocaleString('es-AR')),
+          celdaCsv(p.observacion ?? ''),
         ].join(',')
       )
       .join('\n')
@@ -75,12 +78,13 @@ export async function GET(
     doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke()
     doc.moveDown(0.5)
 
-    const colX = [50, 200, 320, 420]
+    const colX = [50, 105, 235, 340, 430]
     doc.fontSize(10).font('Helvetica-Bold')
-    doc.text('Apellido/s', colX[0], doc.y, { width: 145, continued: true })
-    doc.text('Nombre/s', colX[1], doc.y, { width: 115, continued: true })
-    doc.text('DNI', colX[2], doc.y, { width: 95, continued: true })
-    doc.text('Fecha inscripción', colX[3], doc.y)
+    doc.text('ID', colX[0], doc.y, { width: 50, continued: true })
+    doc.text('Apellido/s', colX[1], doc.y, { width: 125, continued: true })
+    doc.text('Nombre/s', colX[2], doc.y, { width: 100, continued: true })
+    doc.text('DNI', colX[3], doc.y, { width: 85, continued: true })
+    doc.text('Fecha inscripción', colX[4], doc.y)
     doc.moveDown(0.3)
     doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke()
     doc.moveDown(0.3)
@@ -88,10 +92,19 @@ export async function GET(
     doc.fontSize(9).font('Helvetica')
     for (const p of concurso.postulantes) {
       const y = doc.y
-      doc.text(p.apellidos, colX[0], y, { width: 145, continued: true })
-      doc.text(p.nombres, colX[1], y, { width: 115, continued: true })
-      doc.text(p.dni, colX[2], y, { width: 95, continued: true })
-      doc.text(new Date(p.fechaInscripcion).toLocaleDateString('es-AR'), colX[3], y)
+      doc.text(p.codigoInscripcion, colX[0], y, { width: 50, continued: true })
+      doc.text(p.apellidos, colX[1], y, { width: 125, continued: true })
+      doc.text(p.nombres, colX[2], y, { width: 100, continued: true })
+      doc.text(p.dni, colX[3], y, { width: 85, continued: true })
+      doc.text(new Date(p.fechaInscripcion).toLocaleDateString('es-AR'), colX[4], y)
+
+      // La observación puede ser larga: va en su propia línea, indentada bajo el postulante.
+      if (p.observacion) {
+        doc.moveDown(0.15)
+        doc.font('Helvetica-Oblique').fillColor('#444444')
+        doc.text(`Obs.: ${p.observacion}`, colX[1], doc.y, { width: 440 })
+        doc.font('Helvetica').fillColor('black')
+      }
       doc.moveDown(0.2)
     }
 

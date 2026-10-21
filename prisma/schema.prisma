@@ -70,8 +70,9 @@ model Concurso {
 }
 
 model Postulante {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   concursoId         String
+  codigoInscripcion  String    @unique
   apellidos          String
   nombres            String
   dni                String
@@ -80,8 +81,9 @@ model Postulante {
   dniPath            String
   cvPath             String
   antecedentesPath   String
-  fechaInscripcion   DateTime @default(now())
-  concurso           Concurso @relation(fields: [concursoId], references: [id], onDelete: Cascade)
+  observacion        String?
+  fechaInscripcion   DateTime  @default(now())
+  concurso           Concurso  @relation(fields: [concursoId], references: [id], onDelete: Cascade)
 
   @@unique([dni, concursoId])
 }
