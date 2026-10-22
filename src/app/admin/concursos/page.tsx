@@ -6,7 +6,8 @@ import { buttonClassName } from '@/components/ui/Button'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { DeleteConcursoButton } from '@/components/DeleteConcursoButton'
 import { ConcursoFilters } from '@/components/ConcursoFilters'
-import { CARGO_LABELS, CARGOS } from '@/lib/concurso-status'
+import { CARGO_LABELS, CARGOS, claseFilaConcurso, getConcursoEstado } from '@/lib/concurso-status'
+import { ResultadoPublicado } from '@/components/ResultadoPublicado'
 import { Prisma } from '@prisma/client'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -134,47 +135,71 @@ export default async function AdminConcursosPage({
             <span>Postulantes</span>
             <span className="text-right">Acciones</span>
           </div>
-          <div className="divide-y divide-gray-100">
-            {concursos.map((concurso) => (
-              <article
-                key={concurso.id}
-                className="grid gap-4 px-5 py-4 lg:grid-cols-[1fr_150px_170px_260px] lg:items-center"
-              >
-                <div className="min-w-0">
-                  <h2 className="font-semibold text-face-blue">
-                    Expte. {concurso.numeroExpediente} — {CARGO_LABELS[concurso.cargo] ?? concurso.cargo} (
-                    {concurso.dedicacion})
-                  </h2>
-                  <p className="mt-1 truncate text-sm text-gray-500">
-                    {[concurso.disciplina, concurso.area, concurso.catedra, concurso.asignatura]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                  <p className="mt-2 text-xs text-gray-500">
-                    {concurso.fechaApertura.toLocaleString('es-AR')} a {concurso.fechaCierre.toLocaleString('es-AR')}
-                  </p>
-                </div>
-                <div>
-                  <ConcursoStatusBadge fechaApertura={concurso.fechaApertura} fechaCierre={concurso.fechaCierre} />
-                </div>
-                <p className="text-sm font-semibold text-gray-800">
-                  {concurso._count.postulantes} postulante{concurso._count.postulantes !== 1 ? 's' : ''}
-                </p>
-                <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
-                  <Link href={`/admin/concursos/${concurso.id}/postulantes`} className={buttonClassName('secondary')}>
-                    Postulantes
-                  </Link>
-                  <Link href={`/admin/concursos/${concurso.id}/editar`} className={buttonClassName('secondary')}>
-                    Editar
-                  </Link>
-                  <DeleteConcursoButton
-                    id={concurso.id}
-                    nombre={`Expte. ${concurso.numeroExpediente}`}
-                    postulantesCount={concurso._count.postulantes}
-                  />
-                </div>
-              </article>
-            ))}
+          <div className="divide-y divide-gray-200">
+            {concursos.map((concurso) => {
+              const estado = getConcursoEstado(concurso, now)
+              const cerrado = estado === 'cerrado'
+              return (
+                <article key={concurso.id} className={claseFilaConcurso(estado)}>
+                  <div className="grid gap-4 px-5 py-4 lg:grid-cols-[1fr_150px_170px_260px] lg:items-center">
+                    <div className="min-w-0">
+                      <h2 className="font-semibold text-face-blue">
+                        Expte. {concurso.numeroExpediente} — {CARGO_LABELS[concurso.cargo] ?? concurso.cargo} (
+                        {concurso.dedicacion})
+                      </h2>
+                      <p className="mt-1 truncate text-sm text-gray-500">
+                        {[concurso.disciplina, concurso.area, concurso.catedra, concurso.asignatura]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        {concurso.fechaApertura.toLocaleString('es-AR')} a {concurso.fechaCierre.toLocaleString('es-AR')}
+                      </p>
+                    </div>
+                    <div>
+                      <ConcursoStatusBadge fechaApertura={concurso.fechaApertura} fechaCierre={concurso.fechaCierre} />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {concurso._count.postulantes} postulante{concurso._count.postulantes !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+                      <Link href={`/admin/concursos/${concurso.id}/postulantes`} className={buttonClassName('secondary')}>
+                        Postulantes
+                      </Link>
+                      <Link href={`/admin/concursos/${concurso.id}/editar`} className={buttonClassName('secondary')}>
+                        Editar
+                      </Link>
+                      <DeleteConcursoButton
+                        id={concurso.id}
+                        nombre={`Expte. ${concurso.numeroExpediente}`}
+                        postulantesCount={concurso._count.postulantes}
+                      />
+                    </div>
+                  </div>
+
+                  {cerrado && (
+                    <div className="border-t border-black/5 px-5 py-3">
+                      <p className="mb-2 text-xs text-gray-500">
+                        Resultado del llamado: se puede publicar una vez cerrado y aparece en la página principal.
+                      </p>
+                      <ResultadoPublicado
+                        concursoId={concurso.id}
+                        nombre={`Expte. ${concurso.numeroExpediente}`}
+                        resultadoNombre={concurso.resultadoNombre}
+                        publicadoEl={
+                          concurso.resultadoPublicadoEn
+                            ? concurso.resultadoPublicadoEn.toLocaleDateString('es-AR', {
+                                timeZone: 'America/Argentina/Buenos_Aires',
+                              })
+                            : null
+                        }
+                        enlace={`/api/concursos/${concurso.id}/resultado`}
+                      />
+                    </div>
+                  )}
+                </article>
+              )
+            })}
           </div>
         </section>
       )}

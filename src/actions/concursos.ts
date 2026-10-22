@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/guards'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { CARGOS } from '@/lib/concurso-status'
-import { CAMPOS_DOCUMENTO, limpiarArchivos, eliminarCarpetaPostulante, type CampoDocumento } from '@/lib/uploads'
+import { borrarPdf, CAMPOS_DOCUMENTO, limpiarArchivos, eliminarCarpetaPostulante, type CampoDocumento } from '@/lib/uploads'
 
 export type ConcursoActionResult = { error: string } | void
 
@@ -99,9 +99,16 @@ export async function deleteConcurso(id: string): Promise<ConcursoActionResult> 
 
   const concurso = await prisma.concurso.findUnique({
     where: { id },
-    select: { postulantes: { select: { id: true, solicitudPath: true, dniPath: true, cvPath: true, antecedentesPath: true } } },
+    select: {
+      resultadoPath: true,
+      postulantes: { select: { id: true, solicitudPath: true, dniPath: true, cvPath: true, antecedentesPath: true } },
+    },
   })
   if (!concurso) return
+
+  // El resultado publicado se sirve desde /api/concursos/[id]/resultado; al borrar el llamado la fila
+  // y el PDF tienen que irse juntos, si no queda un documento huérfano en el volumen.
+  if (concurso.resultadoPath) await borrarPdf(concurso.resultadoPath)
 
   // La cascada de Postulante borra las filas, pero los PDFs con DNI y CV siguen en disco.
   for (const postulante of concurso.postulantes) {

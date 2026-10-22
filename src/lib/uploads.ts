@@ -53,6 +53,23 @@ export async function limpiarArchivos(paths: Partial<Record<CampoDocumento, stri
   )
 }
 
+// Escritura genérica de un PDF por ruta relativa (los resultados de concurso se guardan en
+// resultados/<concursoId>.pdf, no en la carpeta de un postulante). El guardado de ruta se hace acá
+// para que ningún llamador pueda saltarse la validación de dentroDeUploadDir.
+export async function guardarPdf(relativa: string, file: File): Promise<void> {
+  const destino = dentroDeUploadDir(relativa)
+  await mkdir(path.dirname(destino), { recursive: true })
+  await writeFile(destino, Buffer.from(await file.arrayBuffer()))
+}
+
+export async function borrarPdf(relativa: string): Promise<void> {
+  try {
+    await unlink(dentroDeUploadDir(relativa))
+  } catch {
+    // un resultado que no estaba en disco ya no tiene nada que limpiar
+  }
+}
+
 export async function eliminarCarpetaPostulante(postulanteId: string) {
   await rm(dentroDeUploadDir(postulanteId), { recursive: true, force: true })
 }

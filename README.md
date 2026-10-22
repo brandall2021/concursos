@@ -3,7 +3,7 @@
 Aplicación web para la inscripción digital a concursos docentes (Profesores Titulares, Asociados y Adjuntos) de la Universidad Nacional de Tucumán, conforme al Reglamento General de Concursos Docentes vigente (Resolución N°: RES - DGAC - 10801 / 2026).
 
 - **Postulantes:** ven los llamados con inscripción abierta, seleccionan el concurso, completan sus datos, adjuntan la documentación (solicitud, DNI, CV y respaldatoria de antecedentes) y aceptan las declaraciones juradas. Reciben un **ID de inscripción de 5 caracteres** y un comprobante PDF con código QR.
-- **Administradores (Departamento Concursos):** crean, editan y eliminan llamados; consultan postulantes, les cargan **observaciones** y descargan la documentación o exportan a CSV/PDF. Login con Google OAuth.
+- **Administradores (Departamento Concursos):** crean, editan y eliminan llamados; consultan postulantes, les cargan **observaciones**, descargan la documentación o exportan a CSV/PDF, y **publican el resultado** de los concursos cerrados subiendo un PDF que queda enlazado en la página principal. Login con Google OAuth.
 
 **Stack:** Next.js 16 (App Router, Turbopack) · React 19 · Prisma 5 · PostgreSQL · NextAuth v5 · Tailwind CSS v4 · pdfkit · qrcode · nodemailer · Vitest
 
@@ -15,12 +15,13 @@ Aplicación web para la inscripción digital a concursos docentes (Profesores Ti
 2. [Variables de entorno](#variables-de-entorno)
 3. [Documentación requerida por el postulante](#documentación-requerida-por-el-postulante)
 4. [ID de inscripción y observaciones](#id-de-inscripción-y-observaciones)
-5. [Notificación por email](#notificación-por-email)
-6. [Desarrollo local](#desarrollo-local)
-7. [Base de datos](#base-de-datos)
-8. [Tests y build](#tests-y-build)
-9. [Despliegue en Dokploy](#despliegue-en-dokploy)
-10. [Arquitectura y estructura](#arquitectura-y-estructura)
+5. [Resultado publicado de un concurso cerrado](#resultado-publicado-de-un-concurso-cerrado)
+6. [Notificación por email](#notificación-por-email)
+7. [Desarrollo local](#desarrollo-local)
+8. [Base de datos](#base-de-datos)
+9. [Tests y build](#tests-y-build)
+10. [Despliegue en Dokploy](#despliegue-en-dokploy)
+11. [Arquitectura y estructura](#arquitectura-y-estructura)
 
 ---
 
@@ -40,7 +41,7 @@ Copiar `.env.example` a `.env` y completar los valores.
 | Variable | Obligatoria | Descripción |
 |---|---|---|
 | `DATABASE_URL` | Sí | Cadena de conexión PostgreSQL: `postgresql://USUARIO:PASSWORD@HOST:5432/concursos_docentes` |
-| `AUTH_URL` | Sí | URL pública de la aplicación, p. ej. `https://concursos.softgroup.com.ar`. En local: `http://localhost:3000` |
+| `AUTH_URL` | Sí | URL pública de la aplicación, p. ej. `https://concursos.face-unt.ar`. En local: `http://localhost:3000` |
 | `AUTH_SECRET` | Sí | Secreto de NextAuth y **clave HMAC** que firma los enlaces del comprobante. Generar con `openssl rand -base64 32`. Rotarlo revoca todos los enlaces enviados por correo |
 | `GOOGLE_CLIENT_ID` / `AUTH_GOOGLE_ID` | Sí | Client ID de Google OAuth (se acepta el prefijo `AUTH_GOOGLE_*` o `GOOGLE_*`) |
 | `GOOGLE_CLIENT_SECRET` / `AUTH_GOOGLE_SECRET` | Sí | Client Secret de Google OAuth |
@@ -88,6 +89,20 @@ El código aparece en cuatro lugares: la pantalla de confirmación, el encabezad
 La **observación** es una nota interna del Departamento Concursos: se edita desde la tabla de postulantes (`actualizarObservacion`, server action protegida por `requireAdmin`) y viaja en el export CSV y en el PDF, donde se imprime indentada debajo del postulante. No figura en el comprobante que descarga el interesado.
 
 El QR del comprobante lleva además la dirección del portal (`PORTAL_URL`, por defecto `https://concursos.face-unt.ar`). Es una variable separada de `AUTH_URL` a propósito: `AUTH_URL` define el dominio de las sesiones y del enlace firmado, y mudar uno no debería cambiar la referencia institucional que escanea un tercero.
+
+## Resultado publicado de un concurso cerrado
+
+Cuando un llamado cierra (`fechaCierre` en el pasado), el Departamento Concursos puede **publicar su resultado**: sube un PDF (resolución, dictamen u orden de mérito) y ese documento queda enlazado desde la página principal, en la sección *Concursos cerrados con resultado publicado*, con el número de expediente, el nombre del archivo y la fecha de publicación.
+
+- **Dónde:** `/admin/concursos`. Cada fila está teñida por estado — ámbar *próxima apertura*, verde *inscripción abierta*, gris *cerrado* — con el mismo borde de acento que el badge; el color es una ayuda visual y el badge sigue diciendo el estado en texto. Las filas cerradas traen además la franja *Resultado del llamado*.
+- **Cuándo se puede:** solo con el concurso cerrado. `publicarResultado` rechaza lo contrario aunque el formulario le llegue, porque publicar una resolución antes del cierre es un acto institucional, no un detalle de la interfaz.
+- **Qué se valida:** PDF por `type`/extensión, tope de `LIMITE_RESULTADO` (25 MB) y firma `%PDF-` en los primeros bytes, con las mismas helpers que la inscripción (`esPdfValido`, `tieneFirmaPdf`).
+- **Cómo se guarda:** `UPLOAD_DIR/resultados/<concursoId>-<marca de tiempo>.pdf`. El nombre versionado hace que reemplazar un documento sea un solo paso atómico para quien lo lee: se escribe el archivo nuevo, se actualiza la fila, y recién entonces se borra la versión anterior. Si el `update` falla, se elimina el archivo nuevo y la base sigue apuntando al PDF que estaba publicado.
+- **Enlace público:** `GET /api/concursos/:id/resultado` sirve el archivo con `Content-Disposition: inline` y `Cache-Control: no-store` (volver a publicar no debe dejar la versión anterior en un cache intermedio). Responde 404 si el concurso no tiene `resultadoPublicadoEn`, sin revelar si el llamado existe o no. No lleva firma HMAC como el comprobante porque el documento es público por decisión del admin; sí exige que la ruta salga de la base, nunca del parámetro de la URL.
+- **Quitar la publicación** (`despublicarResultado`) primero despublica en la base y después borra el archivo, para que no haya una ventana con el PDF servido y la base diciendo que no existe. Borrar el llamado también limpia su resultado.
+
+Columnas nuevas en `Concurso`: `resultadoPath`, `resultadoNombre` y `resultadoPublicadoEn` (migración `20261022000000_resultado_publicado_de_concurso`). No hay backfill: los llamados ya cerrados quedan sin publicación hasta que un admin la cargue.
+
 
 ---
 
@@ -206,7 +221,7 @@ En Dokploy → aplicación → **Environment**:
 ```env
 DATABASE_URL=postgresql://USUARIO:PASSWORD@HOST:5432/concursos_docentes
 
-AUTH_URL=https://concursos.softgroup.com.ar
+AUTH_URL=https://concursos.face-unt.ar
 AUTH_SECRET=<generá con: openssl rand -base64 32>
 
 GOOGLE_CLIENT_ID=<desde Google Cloud Console>
@@ -256,7 +271,7 @@ En Dokploy → aplicación → **Domains**:
 
 | Campo | Valor |
 |---|---|
-| **Domain** | `concursos.softgroup.com.ar` |
+| **Domain** | `concursos.face-unt.ar` |
 | **Port** | `3000` |
 | **HTTPS** | activar (Let's Encrypt) |
 
@@ -271,13 +286,13 @@ En [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Ser
 **Authorized redirect URIs:**
 
 ```
-https://concursos.softgroup.com.ar/api/auth/callback/google
+https://concursos.face-unt.ar/api/auth/callback/google
 ```
 
 **Authorized JavaScript origins:**
 
 ```
-https://concursos.softgroup.com.ar
+https://concursos.face-unt.ar
 ```
 
 Copiar el **Client ID** y **Client Secret** a las variables `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` de Dokploy.
@@ -300,7 +315,7 @@ No hace falta un paso manual: el **entrypoint** (`docker-entrypoint.sh`) ejecuta
 
 1. En Dokploy → **Deploy Now**.
 2. Esperar a que el build termine y el contenedor quede saludable.
-3. Acceder a `https://concursos.softgroup.com.ar/admin/login` y autenticarse con Google usando el `ADMIN_EMAIL` configurado.
+3. Acceder a `https://concursos.face-unt.ar/admin/login` y autenticarse con Google usando el `ADMIN_EMAIL` configurado.
 4. Desde `/admin/usuarios` se agregan/eliminan otros administradores (whitelist por email).
 
 **Prueba rápida de las barreras** (en una ventana de incógnito, sin sesión):
@@ -332,7 +347,7 @@ Y en el build: `npm run build` no debe tirar advertencias de Turbopack y `docker
 ```
 src/
 ├── app/
-│   ├── page.tsx                                  # Página pública: llamados abiertos
+│   ├── page.tsx                                  # Página pública: llamados abiertos y resultados publicados
 │   ├── inscripcion/[concursoId]/
 │   │   ├── page.tsx                              # Texto legal + formulario
 │   │   └── confirmacion/page.tsx                 # Comprobante + descarga
@@ -349,11 +364,13 @@ src/
 │   └── api/
 │       ├── auth/[...nextauth]/route.ts           # Handlers de NextAuth
 │       ├── comprobante/[postulanteId]/route.ts   # PDF del comprobante con QR
+│       ├── concursos/[id]/resultado/route.ts     # PDF de resultado publicado (acceso público)
 │       └── admin/
 │           ├── concursos/[id]/export/route.ts    # Export CSV / PDF
 │           └── postulantes/[id]/documentos/[campo]/route.ts  # Descarga de PDFs (auth)
 ├── actions/                                      # Server Actions
 │   ├── concursos.ts                              # create / update / delete
+│   ├── resultados.ts                             # publicarResultado / despublicarResultado
 │   ├── postulantes.ts                            # inscribirPostulante (validación + guardado)
 │   ├── observaciones.ts                          # actualizarObservacion (notas del panel)
 │   └── usuarios.ts                               # Alta/baja de administradores
@@ -361,6 +378,7 @@ src/
 │   ├── ConcursoForm.tsx / ConcursoSelect.tsx / ConcursoStatusBadge.tsx
 │   ├── PostulanteForm.tsx                        # Formulario público (4 archivos)
 │   ├── ObservacionEditor.tsx                     # Edición inline de la observación
+│   ├── ResultadoPublicado.tsx                    # Publicar/reemplazar/quitar el PDF de un cerrado
 │   ├── Footer.tsx                                # Pie institucional de las páginas públicas
 │   ├── ExportButtons.tsx / DeleteConcursoButton.tsx / UsuariosTable.tsx
 │   ├── InstitutionalBrand.tsx                    # Marca UNT
@@ -381,8 +399,9 @@ src/
     ├── comprobante-firma.ts                      # Firma HMAC de la URL pública del comprobante
     ├── rate-limit.ts                             # Ventana fija en memoria, por IP
     ├── http.ts                                   # Escape de CSV y nombres de archivo seguros
+    ├── resultados.ts                             # Validación, nombre y rutas del PDF de resultado
     ├── email.ts                                  # Envío del comprobante por SMTP (nodemailer)
-    └── concurso-status.ts                        # Estados y etiquetas de concurso
+    └── concurso-status.ts                        # Estados, etiquetas y colores de fila
 
 prisma/
 ├── schema.prisma                                 # Modelos de datos
@@ -396,7 +415,7 @@ Dockerfile                                        # Build multi-stage (standalon
 
 `src/proxy.ts` es el middleware de Next 16 (renombrado desde `middleware.ts`): intercepta `/admin/:path*` y `/api/admin/:path*` y responde 401 en las APIs, o redirige en las páginas, cuando no hay sesión. La barrera de rol (`requireAdmin`) corre además dentro de cada página, action y route, así que el panel sigue protegido si el middleware se salta o cambia de matcher.
 
-Los tests están junto al código: `lib/*.test.ts` y `actions/postulantes.test.ts`.
+Los tests están junto al código: `lib/*.test.ts` y `actions/postulantes.test.ts`, `actions/observaciones.test.ts`, `actions/resultados.test.ts`.
 
 ### Flujo de inscripción
 
@@ -414,7 +433,8 @@ Un DNI que ya figura inscrito produce un mensaje genérico: saber *quién* se pr
 - Login por whitelist: sólo el `ADMIN_EMAIL` inicial o usuarios ya registrados pueden ingresar. Con `AUTH_ALLOWED_DOMAINS` se restringe además el dominio de la cuenta Google, comparando por sufijo sobre la raíz (`unt.edu.ar` incluye `face.unt.edu.ar`, pero no `unt.edu.ar.evil.com`). Los rechazos quedan en el log del servidor con el motivo: dominio o whitelist.
 - Las rutas de descarga y export verifican rol y devuelven **401** sin autenticación.
 - `/api/comprobante/[id]` es público por diseño (el postulante no tiene alta), pero exige `?t=` firma HMAC del `AUTH_SECRET`: la clave primaria deja de ser la credencial y rotar el secreto revoca todos los enlaces emitidos.
-- Los PDFs se validan por contenido, no por `type`/extensión, y se sirven con nombre de archivo saneado y `Content-Disposition: attachment`.
+- Los PDFs se validan por contenido, no por `type`/extensión, y se sirven con nombre de archivo saneado y `Content-Disposition: attachment` (el resultado publicado usa `inline` para abrirlo en la misma pestaña).
+- `/api/concursos/[id]/resultado` no pide sesión: muestra justamente el documento que el admin decidió publicar. La ruta del archivo sale de la base, nunca del parámetro de la URL, y sin `resultadoPublicadoEn` responde 404 igual que si el llamado no existiera.
 - El export CSV neutraliza preficios de fórmula (`= + - @ tab CR`) para que Excel/LibreOffice no evalúen celdas escritas por postulantes.
 - Eliminar un concurso borra también sus PDFs del disco, no sólo las filas.
 - Encabezados `CSP`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: same-origin`, `HSTS` y `Permissions-Policy` en `next.config.ts`.

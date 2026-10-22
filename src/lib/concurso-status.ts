@@ -10,11 +10,12 @@ export const CARGO_LABELS: Record<string, string> = {
   Adjunto: 'Profesor Adjunto',
 }
 
-export function getConcursoEstado(concurso: {
-  fechaApertura: Date
-  fechaCierre: Date
-}): ConcursoEstado {
-  const now = new Date()
+// `now` es opcional para que las reglas se puedan probar con una fecha fija; quien llama desde la
+// app no lo pasa y usa el reloj del servidor.
+export function getConcursoEstado(
+  concurso: { fechaApertura: Date; fechaCierre: Date },
+  now: Date = new Date()
+): ConcursoEstado {
   if (now < concurso.fechaApertura) return 'proximo'
   if (now > concurso.fechaCierre) return 'cerrado'
   return 'activo'
@@ -25,6 +26,19 @@ export function isConcursoActivo(concurso: {
   fechaCierre: Date
 }): boolean {
   return getConcursoEstado(concurso) === 'activo'
+}
+
+// Tinte de fila para la grilla de administración. Son los mismos tres tonos del badge
+// (ConcursoStatusBadge), llevados a la fila entera para que el estado se vea al escanear la lista.
+// Se aplica siempre junto con el badge: el color es una ayuda, nunca la única señal del estado.
+export const FILA_POR_ESTADO: Record<ConcursoEstado, string> = {
+  proximo: 'border-l-4 border-l-amber-400 bg-amber-50/70 hover:bg-amber-50',
+  activo: 'border-l-4 border-l-emerald-500 bg-emerald-50/60 hover:bg-emerald-50/90',
+  cerrado: 'border-l-4 border-l-gray-300 bg-gray-50 hover:bg-gray-100/80',
+}
+
+export function claseFilaConcurso(estado: ConcursoEstado): string {
+  return FILA_POR_ESTADO[estado]
 }
 
 export function etiquetaConcurso(concurso: {

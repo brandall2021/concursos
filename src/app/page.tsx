@@ -8,15 +8,36 @@ import { CARGO_LABELS } from '@/lib/concurso-status'
 
 export const dynamic = 'force-dynamic'
 
+// El listado de resultados publicados se corta en 50: es un histórico que crece una fila por llamado
+// cerrado, y la página principal no tiene sentido que muestre años de resoluciones seguidas.
+const MAX_RESULTADOS_PUBLICADOS = 50
+
 export default async function HomePage() {
   const now = new Date()
-  const concursos = await prisma.concurso.findMany({
-    where: {
-      fechaApertura: { lte: now },
-      fechaCierre: { gte: now },
-    },
-    orderBy: { fechaCierre: 'asc' },
-  })
+  const [concursos, resultados] = await Promise.all([
+    prisma.concurso.findMany({
+      where: {
+        fechaApertura: { lte: now },
+        fechaCierre: { gte: now },
+      },
+      orderBy: { fechaCierre: 'asc' },
+    }),
+    prisma.concurso.findMany({
+      where: { resultadoPublicadoEn: { not: null } },
+      orderBy: { resultadoPublicadoEn: 'desc' },
+      take: MAX_RESULTADOS_PUBLICADOS,
+      select: {
+        id: true,
+        numeroExpediente: true,
+        cargo: true,
+        dedicacion: true,
+        disciplina: true,
+        asignatura: true,
+        resultadoNombre: true,
+        resultadoPublicadoEn: true,
+      },
+    }),
+  ])
 
   return (
     <main className="flex min-h-screen flex-col bg-slate-50 text-gray-900">
@@ -130,6 +151,51 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {resultados.length > 0 && (
+        <section className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6">
+          <div className="mb-5">
+            <h2 className="text-xl font-bold text-face-blue">Concursos cerrados con resultado publicado</h2>
+            <p className="text-sm text-gray-500">
+              Resoluciones, dictámenes y órdenes de mérito cargados por el Departamento Concursos.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {resultados.map((concurso) => (
+              <article
+                key={concurso.id}
+                className="rounded-md border border-gray-200 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
+              >
+                <h3 className="text-sm font-bold text-gray-950">
+                  Expte. {concurso.numeroExpediente} — {CARGO_LABELS[concurso.cargo] ?? concurso.cargo} (
+                  {concurso.dedicacion})
+                </h3>
+                <p className="mt-1 truncate text-xs text-gray-500">
+                  {[concurso.disciplina, concurso.asignatura].filter(Boolean).join(' · ')}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-gray-500">
+                    {concurso.resultadoNombre ?? 'Documento del concurso'}
+                    {' · publicado el '}
+                    {concurso.resultadoPublicadoEn?.toLocaleDateString('es-AR', {
+                      timeZone: 'America/Argentina/Buenos_Aires',
+                    })}
+                  </span>
+                  <a
+                    href={`/api/concursos/${concurso.id}/resultado`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClassName('secondary', 'px-3 py-1.5 text-xs')}
+                  >
+                    Ver PDF →
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <Footer />
     </main>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getConcursoEstado, isConcursoActivo, etiquetaConcurso } from './concurso-status'
+import { FILA_POR_ESTADO, claseFilaConcurso, getConcursoEstado, isConcursoActivo, etiquetaConcurso } from './concurso-status'
 
 const past = (offsetMinutes: number) =>
   new Date(Date.now() - offsetMinutes * 60 * 1000)
@@ -28,6 +28,33 @@ describe('isConcursoActivo', () => {
     expect(isConcursoActivo({ fechaApertura: past(60), fechaCierre: future(60) })).toBe(true)
     expect(isConcursoActivo({ fechaApertura: future(60), fechaCierre: future(120) })).toBe(false)
     expect(isConcursoActivo({ fechaApertura: past(120), fechaCierre: past(60) })).toBe(false)
+  })
+})
+
+describe('getConcursoEstado con reloj fijo', () => {
+  it('usa el now que le pasan, no el del servidor', () => {
+    const concurso = { fechaApertura: new Date('2026-01-01'), fechaCierre: new Date('2026-02-01') }
+    expect(getConcursoEstado(concurso, new Date('2026-01-15'))).toBe('activo')
+    expect(getConcursoEstado(concurso, new Date('2026-02-15'))).toBe('cerrado')
+    expect(getConcursoEstado(concurso, new Date('2025-12-31'))).toBe('proximo')
+  })
+})
+
+describe('FILA_POR_ESTADO', () => {
+  it('cubre los tres estados con un tinte y un borde de acento distintos', () => {
+    const clases = Object.values(FILA_POR_ESTADO)
+    expect(clases).toHaveLength(3)
+    expect(new Set(clases).size).toBe(3)
+    for (const clase of clases) {
+      expect(clase).toContain('border-l-4')
+      expect(clase).toMatch(/bg-(amber|emerald|gray)-/)
+    }
+  })
+
+  it('claseFilaConcurso devuelve la del estado calculado', () => {
+    expect(claseFilaConcurso(getConcursoEstado({ fechaApertura: past(120), fechaCierre: past(60) }))).toBe(
+      FILA_POR_ESTADO.cerrado
+    )
   })
 })
 

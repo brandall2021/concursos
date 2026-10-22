@@ -2,6 +2,7 @@ export const LIMITE_SOLICITUD = 10 * 1024 * 1024 // 10 MB
 export const LIMITE_DNI = 10 * 1024 * 1024 // 10 MB
 export const LIMITE_CV = 100 * 1024 * 1024 // 100 MB
 export const LIMITE_ANTECEDENTES = 100 * 1024 * 1024 // 100 MB
+export const LIMITE_RESULTADO = 25 * 1024 * 1024 // 25 MB
 
 export type CampoDocumento = 'solicitud' | 'dniArchivo' | 'cv' | 'antecedentes'
 

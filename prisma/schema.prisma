@@ -54,19 +54,24 @@ model VerificationToken {
 }
 
 model Concurso {
-  id               String        @id @default(cuid())
-  numeroExpediente String
-  cargo            String
-  dedicacion       String
-  disciplina       String
-  area             String?
-  catedra          String?
-  asignatura       String
-  fechaApertura    DateTime
-  fechaCierre      DateTime
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  postulantes      Postulante[]
+  id                   String        @id @default(cuid())
+  numeroExpediente     String
+  cargo                String
+  dedicacion           String
+  disciplina           String
+  area                 String?
+  catedra              String?
+  asignatura           String
+  fechaApertura        DateTime
+  fechaCierre          DateTime
+  // Resultado del concurso cerrado: PDF subido por el Departamento Concursos y publicado en la
+  // página principal. Las tres columnas se escriben juntas; resultadoPublicadoEn null = sin publicar.
+  resultadoPath        String?
+  resultadoNombre      String?
+  resultadoPublicadoEn DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  postulantes          Postulante[]
 }
 
 model Postulante {
