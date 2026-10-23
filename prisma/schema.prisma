@@ -58,12 +58,16 @@ model Concurso {
   numeroExpediente     String
   cargo                String
   dedicacion           String
-  disciplina           String
+  disciplina           String?
   area                 String?
   catedra              String?
-  asignatura           String
+  asignatura           String?
   fechaApertura        DateTime
   fechaCierre          DateTime
+  // Resolución que crea el llamado: PDF cargado junto con el alta y enlazado en la página principal.
+  // A diferencia del resultado, no necesita marca de publicación: el llamado ya es público al crearse.
+  resolucionPath       String?
+  resolucionNombre     String?
   // Resultado del concurso cerrado: PDF subido por el Departamento Concursos y publicado en la
   // página principal. Las tres columnas se escriben juntas; resultadoPublicadoEn null = sin publicar.
   resultadoPath        String?

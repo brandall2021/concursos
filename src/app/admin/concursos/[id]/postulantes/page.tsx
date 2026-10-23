@@ -11,7 +11,7 @@ import Link from 'next/link'
 const CAMPOS: CampoDocumento[] = ['solicitud', 'dniArchivo', 'cv', 'antecedentes']
 
 const CAMPOS_LABEL: Record<CampoDocumento, string> = {
-  solicitud: 'Solicitud',
+  solicitud: 'Nota',
   dniArchivo: 'DNI',
   cv: 'CV',
   antecedentes: 'Resp.',

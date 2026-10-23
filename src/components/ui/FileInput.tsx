@@ -45,7 +45,7 @@ export function FileInput({ label, name, ayuda, maxBytes, required }: Props) {
       <label htmlFor={inputId} className="text-sm font-semibold text-gray-700">
         {label}
         <span className="ml-1 font-normal text-gray-500">
-          (Campo obligatorio, PDF · máx. {formatearBytes(maxBytes)})
+          ({required ? 'Campo obligatorio' : 'Opcional'}, PDF · máx. {formatearBytes(maxBytes)})
         </span>
       </label>
       {ayuda && <p className="text-xs leading-5 text-gray-500">{ayuda}</p>}

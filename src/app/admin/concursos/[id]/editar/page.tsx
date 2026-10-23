@@ -30,14 +30,22 @@ export default async function EditarConcursoPage({ params }: { params: Promise<{
       </header>
       <ConcursoForm
         action={action}
+        resolucionActual={
+          concurso.resolucionPath
+            ? {
+                nombre: concurso.resolucionNombre ?? 'Resolución',
+                enlace: `/api/concursos/${concurso.id}/resolucion`,
+              }
+            : null
+        }
         defaultValues={{
           numeroExpediente: concurso.numeroExpediente,
           cargo: concurso.cargo,
           dedicacion: concurso.dedicacion,
-          disciplina: concurso.disciplina,
+          disciplina: concurso.disciplina ?? '',
           area: concurso.area ?? '',
           catedra: concurso.catedra ?? '',
-          asignatura: concurso.asignatura,
+          asignatura: concurso.asignatura ?? '',
           fechaApertura: toDatetimeLocal(concurso.fechaApertura),
           fechaCierre: toDatetimeLocal(concurso.fechaCierre),
         }}

@@ -45,10 +45,10 @@ export function etiquetaConcurso(concurso: {
   numeroExpediente: string
   cargo: string
   dedicacion: string
-  disciplina: string
+  disciplina?: string | null
   area?: string | null
   catedra?: string | null
-  asignatura: string
+  asignatura?: string | null
 }): string {
   const partes = [
     `Expte. ${concurso.numeroExpediente}`,
@@ -59,5 +59,6 @@ export function etiquetaConcurso(concurso: {
     concurso.catedra ? `Cátedra ${concurso.catedra}` : null,
     concurso.asignatura,
   ]
+  // Los campos opcionales del llamado pueden faltar: la etiqueta se arma con lo que haya.
   return partes.filter(Boolean).join(' — ')
 }

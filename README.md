@@ -2,8 +2,8 @@
 
 Aplicación web para la inscripción digital a concursos docentes (Profesores Titulares, Asociados y Adjuntos) de la Universidad Nacional de Tucumán, conforme al Reglamento General de Concursos Docentes vigente (Resolución N°: RES - DGAC - 10801 / 2026).
 
-- **Postulantes:** ven los llamados con inscripción abierta, seleccionan el concurso, completan sus datos, adjuntan la documentación (solicitud, DNI, CV y respaldatoria de antecedentes) y aceptan las declaraciones juradas. Reciben un **ID de inscripción de 5 caracteres** y un comprobante PDF con código QR.
-- **Administradores (Departamento Concursos):** crean, editan y eliminan llamados; consultan postulantes, les cargan **observaciones**, descargan la documentación o exportan a CSV/PDF, y **publican el resultado** de los concursos cerrados subiendo un PDF que queda enlazado en la página principal. Login con Google OAuth.
+- **Postulantes:** ven los llamados con inscripción abierta, seleccionan el concurso, completan sus datos, adjuntan la documentación (nota de inscripción, DNI, CV y respaldatoria de antecedentes) y aceptan las declaraciones juradas. Reciben un **ID de inscripción de 5 caracteres** y un comprobante PDF con código QR.
+- **Administradores (Departamento Concursos):** crean, editan y eliminan llamados —con la **resolución** que los crea adjunta—; consultan postulantes, les cargan **observaciones**, descargan la documentación o exportan a CSV/PDF, y **publican el resultado** de los concursos cerrados subiendo un PDF que queda enlazado en la página principal. Login con Google OAuth.
 
 **Stack:** Next.js 16 (App Router, Turbopack) · React 19 · Prisma 5 · PostgreSQL · NextAuth v5 · Tailwind CSS v4 · pdfkit · qrcode · nodemailer · Vitest
 
@@ -15,13 +15,14 @@ Aplicación web para la inscripción digital a concursos docentes (Profesores Ti
 2. [Variables de entorno](#variables-de-entorno)
 3. [Documentación requerida por el postulante](#documentación-requerida-por-el-postulante)
 4. [ID de inscripción y observaciones](#id-de-inscripción-y-observaciones)
-5. [Resultado publicado de un concurso cerrado](#resultado-publicado-de-un-concurso-cerrado)
-6. [Notificación por email](#notificación-por-email)
-7. [Desarrollo local](#desarrollo-local)
-8. [Base de datos](#base-de-datos)
-9. [Tests y build](#tests-y-build)
-10. [Despliegue en Dokploy](#despliegue-en-dokploy)
-11. [Arquitectura y estructura](#arquitectura-y-estructura)
+5. [Resolución del llamado](#resolución-del-llamado)
+6. [Resultado publicado de un concurso cerrado](#resultado-publicado-de-un-concurso-cerrado)
+7. [Notificación por email](#notificación-por-email)
+8. [Desarrollo local](#desarrollo-local)
+9. [Base de datos](#base-de-datos)
+10. [Tests y build](#tests-y-build)
+11. [Despliegue en Dokploy](#despliegue-en-dokploy)
+12. [Arquitectura y estructura](#arquitectura-y-estructura)
 
 ---
 
@@ -51,11 +52,14 @@ Copiar `.env.example` a `.env` y completar los valores.
 | `RATE_LIMIT_VENTANA_MIN` | No | Duración de la ventana en minutos. Por defecto `60` |
 | `UPLOAD_DIR` | No | Directorio de almacenamiento de PDFs. Por defecto `./uploads`; en producción `/app/uploads` |
 | `PORTAL_URL` | No | Dirección que se imprime en el QR del comprobante. Por defecto `https://concursos.face-unt.ar`. Es independiente de `AUTH_URL` |
-| `SMTP_HOST` | No | Servidor SMTP para enviar el comprobante por email. Si falta, no se envía correo |
-| `SMTP_PORT` | No | Puerto SMTP (típico `587` o `465`) |
+| `SMTP_USER` | No* | Cuenta de **Gmail** que envía el comprobante, p. ej. `concursos.face@gmail.com` |
+| `SMTP_PASSWORD` | No* | **Contraseña de aplicación** de Gmail (no la contraseña de la cuenta) |
+| `SMTP_FROM` | No* | Remitente. Tiene que ser la misma cuenta de `SMTP_USER`; el nombre para mostrar es opcional: `Concursos Docentes <concursos.face@gmail.com>` |
+| `SMTP_HOST` | No | Servidor SMTP. Por defecto `smtp.gmail.com`; servís para volver a un SMTP institucional |
+| `SMTP_PORT` | No | Puerto SMTP. Por defecto `465` (TLS implícito de Gmail); `587` usa STARTTLS |
 | `SMTP_SECURE` | No | `true` para TLS implícito (puerto 465). Por defecto se infiere del puerto |
-| `SMTP_USER` / `SMTP_PASSWORD` | No | Credenciales SMTP (si el servidor requiere autenticación) |
-| `SMTP_FROM` | No | Remitente, p. ej. `Concursos Docentes <no-reply@face.unt.edu.ar>` |
+
+\* Las tres son lo que necesita Gmail: con `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FROM` ausentes no se envía correo y la inscripción funciona igual.
 
 > **Nota:** el login admite tanto `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (convención NextAuth v5) como `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (convención clásica).
 
@@ -69,7 +73,7 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 
 | Documento | Campo interno | Límite |
 |---|---|---|
-| Solicitud de inscripción | `solicitud` | 10 MB |
+| Nota de Inscripción | `solicitud` | 10 MB |
 | Documento Nacional de Identidad (ambos lados) | `dniArchivo` | 10 MB |
 | Curriculum Vitae (Anexo II) | `cv` | 100 MB |
 | Documentación respaldatoria de antecedentes | `antecedentes` | 100 MB |
@@ -90,6 +94,24 @@ La **observación** es una nota interna del Departamento Concursos: se edita des
 
 El QR del comprobante lleva además la dirección del portal (`PORTAL_URL`, por defecto `https://concursos.face-unt.ar`). Es una variable separada de `AUTH_URL` a propósito: `AUTH_URL` define el dominio de las sesiones y del enlace firmado, y mudar uno no debería cambiar la referencia institucional que escanea un tercero.
 
+## Resolución del llamado
+
+Al **crear o editar** un concurso (`/admin/concursos/nueva` y `/admin/concursos/[id]/editar`) el formulario admite un PDF opcional: la **resolución que crea el llamado**. Si se carga, la tarjeta de ese llamado en la página principal muestra el enlace **Resolución →**, que abre el documento en la misma pestaña.
+
+- **Es opcional en los dos sentidos:** el campo puede quedar vacío al crear, y desde editar se puede reemplazar el PDF o quitar la resolución con la casilla *Quitar esta resolución*. Un formulario enviado sin archivo no borra nada.
+- **Qué se valida:** PDF por `type`/extensión, tope `LIMITE_RESOLUCION` (25 MB) y firma `%PDF-`, con las mismas helpers que la inscripción. Como el campo es opcional, la ausencia (o un `File` de tamaño 0) es "sin documento", no un error.
+- **Cómo se guarda:** `UPLOAD_DIR/resoluciones/<concursoId>-<marca de tiempo>.pdf`, versionado igual que los resultados: se escribe el archivo nuevo, se actualiza la fila y recién después se borra la versión anterior. Si el `update` falla se elimina el archivo nuevo; si lo que falla es el registro en la base al **crear** el llamado, se descarta el concurso entero, porque quedaría publicado sin su resolución.
+- **Enlace público:** `GET /api/concursos/:id/resolucion` sirve el archivo con `Content-Disposition: inline` y `Cache-Control: no-store`. Responde 404 si el llamado no tiene resolución, y la ruta del archivo sale siempre de la base, nunca del parámetro de la URL.
+- **Borrar el llamado** también limpia su PDF, igual que el resultado publicado.
+
+Columnas nuevas en `Concurso`: `resolucionPath` y `resolucionNombre` (migración `20261023000000_resolucion_del_llamado_y_campos_opcionales`).
+
+### Campos opcionales del llamado
+
+`disciplina` y `asignatura` pasan a admitir `NULL`, como ya hacían `area` y `catedra`: no toda convocatoria detalle los cuatro. Lo que sigue siendo obligatorio es `numeroExpediente`, `cargo`, `dedicacion` y las fechas de apertura y cierre.
+
+Las cuatro etiquetas del formulario dicen *(opcional)*, y en el comprobante PDF, la página principal y la grilla del panel las líneas de un campo vacío simplemente no se imprimen (`etiquetaConcurso` filtra los huecos).
+
 ## Resultado publicado de un concurso cerrado
 
 Cuando un llamado cierra (`fechaCierre` en el pasado), el Departamento Concursos puede **publicar su resultado**: sube un PDF (resolución, dictamen u orden de mérito) y ese documento queda enlazado desde la página principal, en la sección *Concursos cerrados con resultado publicado*, con el número de expediente, el nombre del archivo y la fecha de publicación.
@@ -108,20 +130,24 @@ Columnas nuevas en `Concurso`: `resultadoPath`, `resultadoNombre` y `resultadoPu
 
 ## Notificación por email
 
-Al completar la inscripción, el sistema envía automáticamente al postulante un correo con el **comprobante en PDF adjunto** y un enlace de descarga. El envío se realiza por **SMTP** (nodemailer) y es **opcional**: si no se configuran las variables `SMTP_*`, la inscripción funciona igual pero no se envía el correo (se registra un aviso en el log del servidor).
+Al completar la inscripción, el sistema envía automáticamente al postulante un correo con el **comprobante en PDF adjunto** y un enlace de descarga. El envío sale por **Gmail** (nodemailer) y es **opcional**: sin `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FROM` la inscripción funciona igual pero no se envía el correo (se registra un aviso en el log del servidor).
 
-Variables necesarias:
+Configuración:
 
 ```env
-SMTP_HOST=smtp.tu-servidor.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=usuario@tu-servidor.com
-SMTP_PASSWORD=tu-password
-SMTP_FROM=Concursos Docentes <no-reply@face.unt.edu.ar>
+SMTP_HOST=smtp.gmail.com          # es el default, se puede omitir
+SMTP_PORT=465                     # 587 también funciona (STARTTLS)
+SMTP_SECURE=true                  # con 465; en 587 va false
+SMTP_USER=concursos.face@gmail.com
+SMTP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+SMTP_FROM=Concursos Docentes <concursos.face@gmail.com>
 ```
 
-El envío se hace en segundo plano tras crear el registro; si el SMTP falla, la inscripción **no** se pierde ni se revierte.
+**La contraseña es una «contraseña de aplicación», no la de la cuenta.** Gmail rechaza la autenticación simple: hay que activar la verificación en 2 pasos del correo y generar la contraseña de 16 caracteres en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). Si no aparece esa opción es porque falta el 2 pasos (o el espacio de trabajo lo deshabilita por política).
+
+`SMTP_FROM` debe coincidir con la cuenta autenticada — Gmail reescribe el remitente si no—; lo único que se puede cambiar es el nombre para mostrar. Con una cuenta de Workspace, el envío masivo a direcciones externas puede además requerir que un administrador habilite el SMTP del usuario.
+
+El envío se hace en segundo plano tras crear el registro; si Gmail falla, la inscripción **no** se pierde ni se revierte.
 
 El enlace del correo (`/api/comprobante/[postulanteId]?t=<firma>`) está firmado con HMAC sobre el ID del postulante usando `AUTH_SECRET`, y responde **401** si la firma falta o no coincide. Se sirve con `X-Robots-Tag: noindex, nofollow` y `Cache-Control: private, no-store`.
 
@@ -153,7 +179,7 @@ Abrir [http://localhost:3000](http://localhost:3000).
 
 Modelo de datos (Prisma + PostgreSQL):
 
-- **`Concurso`** — `numeroExpediente`, `cargo`, `dedicacion`, `disciplina`, `area?`, `catedra?`, `asignatura`, `fechaApertura`, `fechaCierre`. Los estados (abierto/cerrado/próximo) se calculan según las fechas.
+- **`Concurso`** — `numeroExpediente`, `cargo`, `dedicacion`, `disciplina?`, `area?`, `catedra?`, `asignatura?`, `fechaApertura`, `fechaCierre`, `resolucionPath?`, `resolucionNombre?`, y el resultado publicado (`resultadoPath?`, `resultadoNombre?`, `resultadoPublicadoEn?`). Los estados (abierto/cerrado/próximo) se calculan según las fechas.
 - **`Postulante`** — datos del postulante (`apellidos`, `nombres`, `dni`, `email`), las 4 rutas de archivo, `fechaInscripcion`, `codigoInscripcion` y `observacion?` (nota interna del administrador, máx. 2000 caracteres). Restricción de unicidad `@@unique([dni, concursoId])`: un mismo DNI no puede inscribirse dos veces al mismo concurso.
 - **`User` / `Account` / `Session` / `VerificationToken`** — modelo estándar de NextAuth v5 (sesiones en base de datos).
 
@@ -180,7 +206,7 @@ npm run build     # build de producción (Next.js standalone)
 npm run start     # servir el build de producción
 ```
 
-Los tests viven junto al código (`*.test.ts`) y cubren las reglas que no conviene revalidar a mano: contención de rutas y validación por firma `%PDF` en `lib/uploads`, neutralización de fórmulas y nombres de archivo en `lib/http` (donde también se prueba la firma HMAC del comprobante), la ventana fija del limitador en `lib/rate-limit`, el alfabeto y la colisión del código de inscripción en `lib/codigo-inscripcion`, el matching por sufijo de `lib/dominios`, los estados de concurso, la guard de `actualizarObservacion` y el flujo completo de `inscribirPostulante` (validaciones, límite por IP, reintento de código y reversión de archivos huérfanos).
+Los tests viven junto al código (`*.test.ts`) y cubren las reglas que no conviene revalidar a mano: contención de rutas y validación por firma `%PDF` en `lib/uploads`, neutralización de fórmulas y nombres de archivo en `lib/http` (donde también se prueba la firma HMAC del comprobante), la ventana fija del limitador en `lib/rate-limit`, el alfabeto y la colisión del código de inscripción en `lib/codigo-inscripcion`, el matching por sufijo de `lib/dominios`, los estados de concurso, las rutas y el caso «sin archivo» de `lib/resoluciones`, la guard de `actualizarObservacion` y el flujo completo de `inscribirPostulante` (validaciones, límite por IP, reintento de código y reversión de archivos huérfanos).
 
 > El build no debe dejar advertencias: un `readFile` con ruta dinámica sin `/* turbopackIgnore: true */` en `lib/comprobante.ts` traza todo el proyecto al standalone y terminaría filtrando `.env` dentro de la imagen.
 
@@ -236,13 +262,13 @@ RATE_LIMIT_VENTANA_MIN=60
 UPLOAD_DIR=/app/uploads
 PORTAL_URL=https://concursos.face-unt.ar
 
-# Opcional — envío del comprobante por email
-SMTP_HOST=smtp.tu-servidor.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=usuario@tu-servidor.com
-SMTP_PASSWORD=tu-password
-SMTP_FROM=Concursos Docentes <no-reply@face.unt.edu.ar>
+# Opcional — envío del comprobante por email (Gmail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=concursos.face@gmail.com
+SMTP_PASSWORD=<contraseña de aplicación>
+SMTP_FROM=Concursos Docentes <concursos.face@gmail.com>
 ```
 
 > Para `AUTH_SECRET`: `openssl rand -base64 32`. Es además la clave que firma los enlaces del comprobante: si lo cambiás después de un envío, los comprobantes ya enviados dejan de abrir.
@@ -364,7 +390,8 @@ src/
 │   └── api/
 │       ├── auth/[...nextauth]/route.ts           # Handlers de NextAuth
 │       ├── comprobante/[postulanteId]/route.ts   # PDF del comprobante con QR
-│       ├── concursos/[id]/resultado/route.ts     # PDF de resultado publicado (acceso público)
+│       ├── concursos/[id]/resultado/route.ts      # PDF de resultado publicado (acceso público)
+│       ├── concursos/[id]/resolucion/route.ts     # PDF de la resolución que crea el llamado
 │       └── admin/
 │           ├── concursos/[id]/export/route.ts    # Export CSV / PDF
 │           └── postulantes/[id]/documentos/[campo]/route.ts  # Descarga de PDFs (auth)
@@ -400,7 +427,8 @@ src/
     ├── rate-limit.ts                             # Ventana fija en memoria, por IP
     ├── http.ts                                   # Escape de CSV y nombres de archivo seguros
     ├── resultados.ts                             # Validación, nombre y rutas del PDF de resultado
-    ├── email.ts                                  # Envío del comprobante por SMTP (nodemailer)
+    ├── resoluciones.ts                           # Validación, nombre y rutas del PDF de resolución
+    ├── email.ts                                  # Envío del comprobante por Gmail (nodemailer)
     └── concurso-status.ts                        # Estados, etiquetas y colores de fila
 
 prisma/
@@ -434,7 +462,7 @@ Un DNI que ya figura inscrito produce un mensaje genérico: saber *quién* se pr
 - Las rutas de descarga y export verifican rol y devuelven **401** sin autenticación.
 - `/api/comprobante/[id]` es público por diseño (el postulante no tiene alta), pero exige `?t=` firma HMAC del `AUTH_SECRET`: la clave primaria deja de ser la credencial y rotar el secreto revoca todos los enlaces emitidos.
 - Los PDFs se validan por contenido, no por `type`/extensión, y se sirven con nombre de archivo saneado y `Content-Disposition: attachment` (el resultado publicado usa `inline` para abrirlo en la misma pestaña).
-- `/api/concursos/[id]/resultado` no pide sesión: muestra justamente el documento que el admin decidió publicar. La ruta del archivo sale de la base, nunca del parámetro de la URL, y sin `resultadoPublicadoEn` responde 404 igual que si el llamado no existiera.
+- `/api/concursos/[id]/resultado` no pide sesión: muestra justamente el documento que el admin decidió publicar. La ruta del archivo sale de la base, nunca del parámetro de la URL, y sin `resultadoPublicadoEn` responde 404 igual que si el llamado no existiera. `/api/concursos/[id]/resolucion` sigue la misma regla con la resolución del llamado.
 - El export CSV neutraliza preficios de fórmula (`= + - @ tab CR`) para que Excel/LibreOffice no evalúen celdas escritas por postulantes.
 - Eliminar un concurso borra también sus PDFs del disco, no sólo las filas.
 - Encabezados `CSP`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: same-origin`, `HSTS` y `Permissions-Policy` en `next.config.ts`.

@@ -3,6 +3,7 @@ export const LIMITE_DNI = 10 * 1024 * 1024 // 10 MB
 export const LIMITE_CV = 100 * 1024 * 1024 // 100 MB
 export const LIMITE_ANTECEDENTES = 100 * 1024 * 1024 // 100 MB
 export const LIMITE_RESULTADO = 25 * 1024 * 1024 // 25 MB
+export const LIMITE_RESOLUCION = 25 * 1024 * 1024 // 25 MB
 
 export type CampoDocumento = 'solicitud' | 'dniArchivo' | 'cv' | 'antecedentes'
 
@@ -16,7 +17,7 @@ export const LIMITES: Record<CampoDocumento, number> = {
 }
 
 export const NOMBRES_DOCUMENTO: Record<CampoDocumento, string> = {
-  solicitud: 'Solicitud de inscripción',
+  solicitud: 'Nota de Inscripción',
   dniArchivo: 'Documento Nacional de Identidad',
   cv: 'Currículum Vitae',
   antecedentes: 'Documentación respaldatoria de antecedentes',

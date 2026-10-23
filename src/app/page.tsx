@@ -137,12 +137,25 @@ export default async function HomePage() {
                             .join(' · ')}
                         </p>
                       </div>
-                      <Link
-                        href={`/inscripcion/${concurso.id}`}
-                        className={buttonClassName('primary', 'w-full shrink-0 sm:w-auto')}
-                      >
-                        Postularme
-                      </Link>
+                      <div className="flex shrink-0 flex-col gap-2 sm:w-44">
+                        <Link
+                          href={`/inscripcion/${concurso.id}`}
+                          className={buttonClassName('primary', 'w-full text-center sm:w-auto')}
+                        >
+                          Postularme
+                        </Link>
+                        {concurso.resolucionPath && (
+                          <a
+                            href={`/api/concursos/${concurso.id}/resolucion`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-face-red hover:underline sm:text-center"
+                            title={concurso.resolucionNombre ?? undefined}
+                          >
+                            Resolución →
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </article>
                 ))}

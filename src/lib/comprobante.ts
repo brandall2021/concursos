@@ -18,10 +18,10 @@ export type ComprobantePostulante = {
     numeroExpediente: string
     cargo: string
     dedicacion: string
-    disciplina: string
+    disciplina: string | null
     area: string | null
     catedra: string | null
-    asignatura: string
+    asignatura: string | null
   }
 }
 
@@ -102,10 +102,10 @@ export async function generarComprobantePdf(
     doc.moveDown(0.5)
     doc.fontSize(13).font('Helvetica-Bold').text(`Expte. ${concurso.numeroExpediente}`)
     doc.fontSize(12).font('Helvetica').text(`Cargo:  ${cargo} (${concurso.dedicacion})`)
-    doc.text(`Disciplina:  ${concurso.disciplina}`)
+    if (concurso.disciplina) doc.text(`Disciplina:  ${concurso.disciplina}`)
     if (concurso.area) doc.text(`Área:  ${concurso.area}`)
     if (concurso.catedra) doc.text(`Cátedra:  ${concurso.catedra}`)
-    doc.text(`Asignatura:  ${concurso.asignatura}`)
+    if (concurso.asignatura) doc.text(`Asignatura:  ${concurso.asignatura}`)
     doc.moveDown(0.5)
     doc.fontSize(11).font('Helvetica').text(
       `Fecha de inscripción:  ${postulante.fechaInscripcion.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`

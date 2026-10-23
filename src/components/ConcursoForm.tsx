@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { Input } from './ui/Input'
 import { Select } from './ui/Select'
 import { Button } from './ui/Button'
+import { FileInput } from './ui/FileInput'
 import { CARGOS, CARGO_LABELS } from '@/lib/concurso-status'
+import { LIMITE_RESOLUCION } from '@/lib/documentos'
 
 interface ConcursoFormProps {
   action: (formData: FormData) => Promise<{ error: string } | void>
@@ -19,9 +21,11 @@ interface ConcursoFormProps {
     fechaApertura: string
     fechaCierre: string
   }
+  // Resolución ya cargada: solo se pasa al editar, para mostrar el enlace y ofrecer quitarla.
+  resolucionActual?: { nombre: string; enlace: string } | null
 }
 
-export function ConcursoForm({ action, defaultValues }: ConcursoFormProps) {
+export function ConcursoForm({ action, defaultValues, resolucionActual }: ConcursoFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -63,12 +67,12 @@ export function ConcursoForm({ action, defaultValues }: ConcursoFormProps) {
           placeholder="Simple / Semiexclusiva / Exclusiva"
         />
       </div>
-      <Input label="Disciplina" name="disciplina" required defaultValue={defaultValues?.disciplina} />
+      <Input label="Disciplina (opcional)" name="disciplina" defaultValue={defaultValues?.disciplina} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Área" name="area" defaultValue={defaultValues?.area} />
-        <Input label="Cátedra" name="catedra" defaultValue={defaultValues?.catedra} />
+        <Input label="Área (opcional)" name="area" defaultValue={defaultValues?.area} />
+        <Input label="Cátedra (opcional)" name="catedra" defaultValue={defaultValues?.catedra} />
       </div>
-      <Input label="Asignatura" name="asignatura" required defaultValue={defaultValues?.asignatura} />
+      <Input label="Asignatura (opcional)" name="asignatura" defaultValue={defaultValues?.asignatura} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           label="Fecha y hora de apertura"
@@ -84,6 +88,40 @@ export function ConcursoForm({ action, defaultValues }: ConcursoFormProps) {
           required
           defaultValue={defaultValues?.fechaCierre}
         />
+      </div>
+      <div className="space-y-3 rounded-md border border-gray-200 bg-slate-50 p-4">
+        <FileInput
+          label="Resolución del llamado"
+          name="resolucion"
+          ayuda="PDF de la resolución que crea el concurso. Si lo cargás, la página principal muestra el enlace «Resolución» en la tarjeta del llamado."
+          maxBytes={LIMITE_RESOLUCION}
+        />
+        {resolucionActual && (
+          <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+            <p className="text-xs font-semibold text-gray-700">Resolución cargada</p>
+            <p className="mt-0.5 truncate text-xs text-gray-500" title={resolucionActual.nombre}>
+              {resolucionActual.nombre}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <a
+                href={resolucionActual.enlace}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold text-face-red hover:underline"
+              >
+                Ver PDF
+              </a>
+              <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  name="quitarResolucion"
+                  className="h-4 w-4 rounded border-gray-300 text-face-red focus:ring-2 focus:ring-face-red"
+                />
+                Quitar esta resolución
+              </label>
+            </div>
+          </div>
+        )}
       </div>
       {error && (
         <p className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">

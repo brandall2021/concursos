@@ -79,11 +79,11 @@ export function PostulanteForm({ concursoId }: { concursoId: string }) {
         <legend className="text-sm font-semibold uppercase tracking-wide text-face-red">Documentación digital</legend>
 
         <FileInput
-          label="Solicitud de inscripción"
+          label="Nota de Inscripción"
           name="solicitud"
           maxBytes={LIMITE_SOLICITUD}
           required
-          ayuda="La solicitud de inscripción debe estar dirigida al Decano/a, con especificación de área, o disciplina/s asignatura/s del cargo al que aspira y detalle de la documentación que adjunta."
+          ayuda="La nota de inscripción debe estar dirigida al Decano/a, con especificación de área, o disciplina/s asignatura/s del cargo al que aspira y detalle de la documentación que adjunta."
         />
         <FileInput
           label="Documento Nacional de Identidad"

@@ -16,14 +16,17 @@ export function rutaResultadoRelativa(concursoId: string, version: number = Date
 
 // Nombre que escribio el admin al subir el archivo. Se muestra en la grilla y en la pagina principal,
 // pero no se usa para la ruta de disco ni para la cabecera de descarga.
-export function nombreResultadoParaMostrar(nombre: string): string {
+export function nombreResultadoParaMostrar(
+  nombre: string,
+  porDefecto: string = 'Documento del concurso'
+): string {
   const base = nombre.split(/[\\/]/).pop() ?? ''
   const limpio = base
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, LARGO_MAX_NOMBRE_RESULTADO)
-  return limpio || 'Documento del concurso'
+  return limpio || porDefecto
 }
 
 // El archivo se sirve con el numero de expediente, que lo define la base de datos: el nombre original
