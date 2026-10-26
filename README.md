@@ -445,6 +445,18 @@ Dockerfile                                        # Build multi-stage (standalon
 
 Los tests están junto al código: `lib/*.test.ts` y `actions/postulantes.test.ts`, `actions/observaciones.test.ts`, `actions/resultados.test.ts`.
 
+### Hora argentina
+
+Toda la aplicación muestra y guarda las fechas en **hora de Argentina (UTC-3)**, sin importar en qué zona corra el contenedor ni desde qué navegador cargó el administrador. Es lo que fija `src/lib/fecha.ts`, y es la razón por la que ningún archivo usa `toLocaleString` directamente:
+
+- `parsearFechaHoraArg` toma el `YYYY-MM-DDTHH:mm` del `datetime-local` **como hora argentina**. Antes ese texto se leía como la hora local del navegador, así que con el contenedor en UTC el mismo llamado se mostraba corrido 3 horas según dónde se lo mirara.
+- `aFechaHoraLocalArg` hace la conversión inversa para precargar el formulario de edición.
+- `fechaHoraArg` / `fechaArg` son los únicos formateadores: se los usa en la home, la inscripción, el comprobante, el QR, la grilla del panel, la tabla de usuarios y los exports CSV/PDF.
+
+Argentina no cambia su hora desde 2009, así que el desplazamiento `-03:00` está fijo en el código en lugar de una base de datos de zonas horarias.
+
+> Los llamados cargados **antes** de este criterio conservan el instante que se guardó: si al editarlos la hora no coincide con la de la convocatoria, vuelvan a grabarla desde `/admin/concursos/[id]/editar` y queda normalizada.
+
 ### Flujo de inscripción
 
 1. El postulante accede a `/` y ve los llamados con inscripción abierta.

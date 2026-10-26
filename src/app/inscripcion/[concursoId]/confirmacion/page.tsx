@@ -4,6 +4,7 @@ import { firmaComprobante } from '@/lib/comprobante-firma'
 import { Footer } from '@/components/Footer'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { CARGO_LABELS } from '@/lib/concurso-status'
+import { fechaHoraArg } from '@/lib/fecha'
 import Link from 'next/link'
 
 export default async function ConfirmacionPage({
@@ -69,7 +70,7 @@ export default async function ConfirmacionPage({
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Fecha</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {postulante.fechaInscripcion.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
+                  {fechaHoraArg(postulante.fechaInscripcion)}
                 </dd>
               </div>
             </div>

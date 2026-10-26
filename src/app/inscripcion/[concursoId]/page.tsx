@@ -5,6 +5,7 @@ import { PostulanteForm } from '@/components/PostulanteForm'
 import { Footer } from '@/components/Footer'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { ConcursoSelect } from '@/components/ConcursoSelect'
+import { fechaHoraArg } from '@/lib/fecha'
 import Link from 'next/link'
 
 export default async function InscripcionPage({ params }: { params: Promise<{ concursoId: string }> }) {
@@ -75,13 +76,13 @@ export default async function InscripcionPage({ params }: { params: Promise<{ co
                 <div className="rounded-md border border-gray-200 bg-white p-4">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Apertura</dt>
                   <dd className="mt-1 text-sm font-semibold text-gray-900">
-                    {concurso.fechaApertura.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
+                    {fechaHoraArg(concurso.fechaApertura)}
                   </dd>
                 </div>
                 <div className="rounded-md border border-gray-200 bg-white p-4">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Cierre</dt>
                   <dd className="mt-1 text-sm font-semibold text-gray-900">
-                    {concurso.fechaCierre.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
+                    {fechaHoraArg(concurso.fechaCierre)}
                   </dd>
                 </div>
               </dl>

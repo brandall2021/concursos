@@ -8,6 +8,7 @@ import { DeleteConcursoButton } from '@/components/DeleteConcursoButton'
 import { ConcursoFilters } from '@/components/ConcursoFilters'
 import { CARGO_LABELS, CARGOS, claseFilaConcurso, getConcursoEstado } from '@/lib/concurso-status'
 import { ResultadoPublicado } from '@/components/ResultadoPublicado'
+import { fechaArg, fechaHoraArg } from '@/lib/fecha'
 import { Prisma } from '@prisma/client'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -153,7 +154,7 @@ export default async function AdminConcursosPage({
                           .join(' · ')}
                       </p>
                       <p className="mt-2 text-xs text-gray-500">
-                        {concurso.fechaApertura.toLocaleString('es-AR')} a {concurso.fechaCierre.toLocaleString('es-AR')}
+                        {fechaHoraArg(concurso.fechaApertura)} a {fechaHoraArg(concurso.fechaCierre)}
                       </p>
                     </div>
                     <div>
@@ -187,11 +188,7 @@ export default async function AdminConcursosPage({
                         nombre={`Expte. ${concurso.numeroExpediente}`}
                         resultadoNombre={concurso.resultadoNombre}
                         publicadoEl={
-                          concurso.resultadoPublicadoEn
-                            ? concurso.resultadoPublicadoEn.toLocaleDateString('es-AR', {
-                                timeZone: 'America/Argentina/Buenos_Aires',
-                              })
-                            : null
+                          concurso.resultadoPublicadoEn ? fechaArg(concurso.resultadoPublicadoEn) : null
                         }
                         enlace={`/api/concursos/${concurso.id}/resultado`}
                       />

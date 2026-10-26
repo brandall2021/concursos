@@ -4,11 +4,7 @@ import { updateConcurso } from '@/actions/concursos'
 import { ConcursoForm } from '@/components/ConcursoForm'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-
-function toDatetimeLocal(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
+import { aFechaHoraLocalArg } from '@/lib/fecha'
 
 export default async function EditarConcursoPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()
@@ -46,8 +42,8 @@ export default async function EditarConcursoPage({ params }: { params: Promise<{
           area: concurso.area ?? '',
           catedra: concurso.catedra ?? '',
           asignatura: concurso.asignatura ?? '',
-          fechaApertura: toDatetimeLocal(concurso.fechaApertura),
-          fechaCierre: toDatetimeLocal(concurso.fechaCierre),
+          fechaApertura: aFechaHoraLocalArg(concurso.fechaApertura),
+          fechaCierre: aFechaHoraLocalArg(concurso.fechaCierre),
         }}
       />
     </div>

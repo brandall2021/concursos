@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from './ui/Button'
 import { removeUsuario } from '@/actions/usuarios'
+import { fechaArg } from '@/lib/fecha'
 
 interface Usuario {
   id: string
@@ -46,7 +47,7 @@ export function UsuariosTable({ usuarios, currentUserId }: { usuarios: Usuario[]
                 <tr key={usuario.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-semibold text-face-blue">{usuario.email}</td>
                   <td className="px-5 py-3 text-gray-600">{usuario.name ?? 'Sin nombre'}</td>
-                  <td className="px-5 py-3 text-gray-500">{usuario.createdAt.toLocaleDateString('es-AR')}</td>
+                  <td className="px-5 py-3 text-gray-500">{fechaArg(usuario.createdAt)}</td>
                   <td className="px-5 py-3 text-right">
                     {usuario.id === currentUserId ? (
                       <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Actual</span>

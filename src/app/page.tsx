@@ -5,6 +5,7 @@ import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { Footer } from '@/components/Footer'
 import { InstitutionalBrand } from '@/components/InstitutionalBrand'
 import { CARGO_LABELS } from '@/lib/concurso-status'
+import { fechaArg, fechaHoraArg } from '@/lib/fecha'
 
 export const dynamic = 'force-dynamic'
 
@@ -116,10 +117,7 @@ export default async function HomePage() {
                         <div className="mb-2 flex flex-wrap items-center gap-2">
                           <ConcursoStatusBadge fechaApertura={concurso.fechaApertura} fechaCierre={concurso.fechaCierre} />
                           <span className="text-xs font-medium text-gray-500">
-                            Cierra{' '}
-                            {concurso.fechaCierre.toLocaleString('es-AR', {
-                              timeZone: 'America/Argentina/Buenos_Aires',
-                            })}
+                            Cierra {fechaHoraArg(concurso.fechaCierre)}
                           </span>
                         </div>
                         <h3 className="text-lg font-bold text-gray-950">
@@ -191,9 +189,7 @@ export default async function HomePage() {
                   <span className="text-xs text-gray-500">
                     {concurso.resultadoNombre ?? 'Documento del concurso'}
                     {' · publicado el '}
-                    {concurso.resultadoPublicadoEn?.toLocaleDateString('es-AR', {
-                      timeZone: 'America/Argentina/Buenos_Aires',
-                    })}
+                    {concurso.resultadoPublicadoEn ? fechaArg(concurso.resultadoPublicadoEn) : ''}
                   </span>
                   <a
                     href={`/api/concursos/${concurso.id}/resultado`}

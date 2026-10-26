@@ -6,6 +6,7 @@ import { ObservacionEditor } from '@/components/ObservacionEditor'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 import { NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/uploads'
+import { fechaHoraArg } from '@/lib/fecha'
 import Link from 'next/link'
 
 const CAMPOS: CampoDocumento[] = ['solicitud', 'dniArchivo', 'cv', 'antecedentes']
@@ -80,11 +81,7 @@ export default async function PostulantesPage({ params }: { params: Promise<{ id
                     <td className="px-5 py-3 text-gray-800">{postulante.nombres}</td>
                     <td className="px-5 py-3 text-gray-600">{postulante.dni}</td>
                     <td className="px-5 py-3 text-gray-600">{postulante.email}</td>
-                    <td className="px-5 py-3 text-gray-500">
-                      {postulante.fechaInscripcion.toLocaleString('es-AR', {
-                        timeZone: 'America/Argentina/Buenos_Aires',
-                      })}
-                    </td>
+                    <td className="px-5 py-3 text-gray-500">{fechaHoraArg(postulante.fechaInscripcion)}</td>
                     <td className="px-5 py-3 align-top">
                       <ObservacionEditor postulanteId={postulante.id} observacion={postulante.observacion} />
                     </td>

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { CARGO_LABELS } from '@/lib/concurso-status'
 import { cabeceraDescarga, celdaCsv } from '@/lib/http'
+import { fechaArg, fechaHoraArg } from '@/lib/fecha'
 import PDFDocument from 'pdfkit'
 
 export async function GET(
@@ -42,7 +43,7 @@ export async function GET(
           celdaCsv(p.nombres),
           celdaCsv(p.dni),
           celdaCsv(p.email),
-          celdaCsv(p.fechaInscripcion.toLocaleString('es-AR')),
+          celdaCsv(fechaHoraArg(p.fechaInscripcion)),
           celdaCsv(p.observacion ?? ''),
         ].join(',')
       )
@@ -71,7 +72,7 @@ export async function GET(
       { align: 'center' }
     )
     doc.fontSize(9).font('Helvetica').text(
-      `Exportado el ${new Date().toLocaleString('es-AR')} | Total: ${concurso.postulantes.length}`,
+      `Exportado el ${fechaHoraArg(new Date())} | Total: ${concurso.postulantes.length}`,
       { align: 'center' }
     )
     doc.moveDown()
@@ -96,7 +97,7 @@ export async function GET(
       doc.text(p.apellidos, colX[1], y, { width: 125, continued: true })
       doc.text(p.nombres, colX[2], y, { width: 100, continued: true })
       doc.text(p.dni, colX[3], y, { width: 85, continued: true })
-      doc.text(new Date(p.fechaInscripcion).toLocaleDateString('es-AR'), colX[4], y)
+      doc.text(fechaArg(p.fechaInscripcion), colX[4], y)
 
       // La observación puede ser larga: va en su propia línea, indentada bajo el postulante.
       if (p.observacion) {

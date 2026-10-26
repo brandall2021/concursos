@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import { CARGO_LABELS } from './concurso-status'
 import { URL_PORTAL } from './institucion'
+import { fechaHoraArg } from './fecha'
 import { urlComprobante } from './comprobante-firma'
 
 export type ComprobantePostulante = {
@@ -48,7 +49,7 @@ export function construirContenidoQr(postulante: ComprobantePostulante, baseUrl?
     `DNI: ${postulante.dni}`,
     `Expte: ${postulante.concurso.numeroExpediente}`,
     `Cargo: ${cargo} (${postulante.concurso.dedicacion})`,
-    `Inscripto el: ${postulante.fechaInscripcion.toLocaleString('es-AR')}`,
+    `Inscripto el: ${fechaHoraArg(postulante.fechaInscripcion)}`,
   ]
   if (baseUrl) {
     lineas.push(`Comprobante: ${urlComprobante(postulante.id, baseUrl)}`)
@@ -108,7 +109,7 @@ export async function generarComprobantePdf(
     if (concurso.asignatura) doc.text(`Asignatura:  ${concurso.asignatura}`)
     doc.moveDown(0.5)
     doc.fontSize(11).font('Helvetica').text(
-      `Fecha de inscripción:  ${postulante.fechaInscripcion.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}`
+      `Fecha de inscripción:  ${fechaHoraArg(postulante.fechaInscripcion)}`
     )
     doc.moveDown(1)
     doc.fontSize(9).font('Helvetica').fillColor('#555555').text(

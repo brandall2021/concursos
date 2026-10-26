@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { CARGOS } from '@/lib/concurso-status'
 import { borrarPdf, CAMPOS_DOCUMENTO, limpiarArchivos, eliminarCarpetaPostulante, guardarPdf, type CampoDocumento } from '@/lib/uploads'
 import { rutaResolucionRelativa, validarResolucionPdf } from '@/lib/resoluciones'
+import { parsearFechaHoraArg } from '@/lib/fecha'
 
 export type ConcursoActionResult = { error: string } | void
 
@@ -66,11 +67,11 @@ function parsear(formData: FormData): DatosConcurso | { error: string } {
     return { error: 'El cargo debe ser Titular, Asociado o Adjunto' }
   }
 
-  const fechaApertura = new Date(String(formData.get('fechaApertura')))
-  const fechaCierre = new Date(String(formData.get('fechaCierre')))
+  const fechaApertura = parsearFechaHoraArg(String(formData.get('fechaApertura')))
+  const fechaCierre = parsearFechaHoraArg(String(formData.get('fechaCierre')))
 
-  if (Number.isNaN(fechaApertura.getTime()) || Number.isNaN(fechaCierre.getTime())) {
-    return { error: 'Las fechas de apertura y cierre son obligatorias' }
+  if (!fechaApertura || !fechaCierre) {
+    return { error: 'Completá la fecha y hora de apertura y de cierre' }
   }
 
   if (fechaCierre <= fechaApertura) {
