@@ -70,8 +70,8 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 |---|---|---|
 | Solicitud de inscripción | `solicitud` | 20 MB |
 | Documento Nacional de Identidad (ambos lados) | `dniArchivo` | 20 MB |
-| Curriculum Vitae (Anexo II) | `cv` | 100 MB |
-| Documentación respaldatoria de antecedentes | `antecedentes` | 100 MB |
+| Curriculum Vitae (Anexo II) | `cv` | 200 MB |
+| Documentación respaldatoria de antecedentes | `antecedentes` | 200 MB |
 
 Los archivos se guardan en disco bajo `UPLOAD_DIR`, en una carpeta por postulante (`<postulanteId>/<campo>.pdf`). **En producción debe montarse un volumen persistente**, de lo contrario la documentación se pierde en cada redeploy.
 
