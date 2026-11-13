@@ -34,11 +34,11 @@ describe('validarPdf', () => {
     expect((await validarPdf(disfrazado, 'cv')).ok).toBe(false)
   })
 
-  it('rejects solicitud over 10MB', async () => {
+  it('rejects solicitud over its limit', async () => {
     expect((await validarPdf(fakeFile('a.pdf', 'application/pdf', LIMITES.solicitud + 1), 'solicitud')).ok).toBe(false)
   })
 
-  it('accepts cv up to 100MB', async () => {
+  it('accepts cv up to its limit', async () => {
     expect((await validarPdf(fakeFile('a.pdf', 'application/pdf', LIMITES.cv), 'cv')).ok).toBe(true)
   })
 })

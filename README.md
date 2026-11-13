@@ -73,14 +73,14 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 
 | Documento | Campo interno | Límite |
 |---|---|---|
-| Nota de Inscripción | `solicitud` | 10 MB |
-| Documento Nacional de Identidad (ambos lados) | `dniArchivo` | 10 MB |
-| Curriculum Vitae (Anexo II) | `cv` | 100 MB |
-| Documentación respaldatoria de antecedentes | `antecedentes` | 100 MB |
+| Nota de Inscripción | `solicitud` | 20 MB |
+| Documento Nacional de Identidad (ambos lados) | `dniArchivo` | 20 MB |
+| Curriculum Vitae (Anexo II) | `cv` | 200 MB |
+| Documentación respaldatoria de antecedentes | `antecedentes` | 200 MB |
 
 Los archivos se guardan en disco bajo `UPLOAD_DIR`, en una carpeta por postulante (`<postulanteId>/<campo>.pdf`). **En producción debe montarse un volumen persistente**, de lo contrario la documentación se pierde en cada redeploy.
 
-El límite de subida de las Server Actions está configurado en `250 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`).
+El límite de subida de las Server Actions está configurado en `400 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`).
 
 ---
 
@@ -99,7 +99,7 @@ El QR del comprobante lleva además la dirección del portal (`PORTAL_URL`, por 
 Al **crear o editar** un concurso (`/admin/concursos/nueva` y `/admin/concursos/[id]/editar`) el formulario admite un PDF opcional: la **resolución que crea el llamado**. Si se carga, la tarjeta de ese llamado en la página principal muestra el enlace **Resolución →**, que abre el documento en la misma pestaña.
 
 - **Es opcional en los dos sentidos:** el campo puede quedar vacío al crear, y desde editar se puede reemplazar el PDF o quitar la resolución con la casilla *Quitar esta resolución*. Un formulario enviado sin archivo no borra nada.
-- **Qué se valida:** PDF por `type`/extensión, tope `LIMITE_RESOLUCION` (25 MB) y firma `%PDF-`, con las mismas helpers que la inscripción. Como el campo es opcional, la ausencia (o un `File` de tamaño 0) es "sin documento", no un error.
+- **Qué se valida:** PDF por `type`/extensión, tope `LIMITE_RESOLUCION` (50 MB) y firma `%PDF-`, con las mismas helpers que la inscripción. Como el campo es opcional, la ausencia (o un `File` de tamaño 0) es "sin documento", no un error.
 - **Cómo se guarda:** `UPLOAD_DIR/resoluciones/<concursoId>-<marca de tiempo>.pdf`, versionado igual que los resultados: se escribe el archivo nuevo, se actualiza la fila y recién después se borra la versión anterior. Si el `update` falla se elimina el archivo nuevo; si lo que falla es el registro en la base al **crear** el llamado, se descarta el concurso entero, porque quedaría publicado sin su resolución.
 - **Enlace público:** `GET /api/concursos/:id/resolucion` sirve el archivo con `Content-Disposition: inline` y `Cache-Control: no-store`. Responde 404 si el llamado no tiene resolución, y la ruta del archivo sale siempre de la base, nunca del parámetro de la URL.
 - **Borrar el llamado** también limpia su PDF, igual que el resultado publicado.
@@ -118,7 +118,7 @@ Cuando un llamado cierra (`fechaCierre` en el pasado), el Departamento Concursos
 
 - **Dónde:** `/admin/concursos`. Cada fila está teñida por estado — ámbar *próxima apertura*, verde *inscripción abierta*, gris *cerrado* — con el mismo borde de acento que el badge; el color es una ayuda visual y el badge sigue diciendo el estado en texto. Las filas cerradas traen además la franja *Resultado del llamado*.
 - **Cuándo se puede:** solo con el concurso cerrado. `publicarResultado` rechaza lo contrario aunque el formulario le llegue, porque publicar una resolución antes del cierre es un acto institucional, no un detalle de la interfaz.
-- **Qué se valida:** PDF por `type`/extensión, tope de `LIMITE_RESULTADO` (25 MB) y firma `%PDF-` en los primeros bytes, con las mismas helpers que la inscripción (`esPdfValido`, `tieneFirmaPdf`).
+- **Qué se valida:** PDF por `type`/extensión, tope de `LIMITE_RESULTADO` (50 MB) y firma `%PDF-` en los primeros bytes, con las mismas helpers que la inscripción (`esPdfValido`, `tieneFirmaPdf`).
 - **Cómo se guarda:** `UPLOAD_DIR/resultados/<concursoId>-<marca de tiempo>.pdf`. El nombre versionado hace que reemplazar un documento sea un solo paso atómico para quien lo lee: se escribe el archivo nuevo, se actualiza la fila, y recién entonces se borra la versión anterior. Si el `update` falla, se elimina el archivo nuevo y la base sigue apuntando al PDF que estaba publicado.
 - **Enlace público:** `GET /api/concursos/:id/resultado` sirve el archivo con `Content-Disposition: inline` y `Cache-Control: no-store` (volver a publicar no debe dejar la versión anterior en un cache intermedio). Responde 404 si el concurso no tiene `resultadoPublicadoEn`, sin revelar si el llamado existe o no. No lleva firma HMAC como el comprobante porque el documento es público por decisión del admin; sí exige que la ruta salga de la base, nunca del parámetro de la URL.
 - **Quitar la publicación** (`despublicarResultado`) primero despublica en la base y después borra el archivo, para que no haya una ventana con el PDF servido y la base diciendo que no existe. Borrar el llamado también limpia su resultado.

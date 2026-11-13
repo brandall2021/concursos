@@ -48,6 +48,6 @@ describe('validarResolucionPdf', () => {
   it('rechaza por encima del limite de tamano', async () => {
     const enorme = new File([new Uint8Array(LIMITE_RESOLUCION + 1)], 'grande.pdf', { type: 'application/pdf' })
     const resultado = await validarResolucionPdf(enorme)
-    expect(resultado).toEqual({ ok: false, error: expect.stringContaining('25 MB') })
+    expect(resultado).toEqual({ ok: false, error: expect.stringContaining('50 MB') })
   })
 })
