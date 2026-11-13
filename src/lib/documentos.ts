@@ -1,5 +1,5 @@
-export const LIMITE_SOLICITUD = 10 * 1024 * 1024 // 10 MB
-export const LIMITE_DNI = 10 * 1024 * 1024 // 10 MB
+export const LIMITE_SOLICITUD = 20 * 1024 * 1024 // 20 MB
+export const LIMITE_DNI = 20 * 1024 * 1024 // 20 MB
 export const LIMITE_CV = 100 * 1024 * 1024 // 100 MB
 export const LIMITE_ANTECEDENTES = 100 * 1024 * 1024 // 100 MB
 

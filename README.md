@@ -68,8 +68,8 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 
 | Documento | Campo interno | Límite |
 |---|---|---|
-| Solicitud de inscripción | `solicitud` | 10 MB |
-| Documento Nacional de Identidad (ambos lados) | `dniArchivo` | 10 MB |
+| Solicitud de inscripción | `solicitud` | 20 MB |
+| Documento Nacional de Identidad (ambos lados) | `dniArchivo` | 20 MB |
 | Curriculum Vitae (Anexo II) | `cv` | 100 MB |
 | Documentación respaldatoria de antecedentes | `antecedentes` | 100 MB |
 
