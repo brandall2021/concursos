@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '250mb',
+      bodySizeLimit: '400mb',
     },
   },
   async headers() {

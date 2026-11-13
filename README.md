@@ -75,7 +75,7 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 
 Los archivos se guardan en disco bajo `UPLOAD_DIR`, en una carpeta por postulante (`<postulanteId>/<campo>.pdf`). **En producción debe montarse un volumen persistente**, de lo contrario la documentación se pierde en cada redeploy.
 
-El límite de subida de las Server Actions está configurado en `250 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`).
+El límite de subida de las Server Actions está configurado en `400 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`).
 
 ---
 
