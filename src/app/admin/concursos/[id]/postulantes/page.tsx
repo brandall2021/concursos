@@ -3,9 +3,10 @@ import { requireAdmin } from '@/lib/guards'
 import { notFound } from 'next/navigation'
 import { ExportButtons } from '@/components/ExportButtons'
 import { ObservacionEditor } from '@/components/ObservacionEditor'
+import { DocumentoUpload } from '@/components/DocumentoUpload'
 import { ConcursoStatusBadge } from '@/components/ConcursoStatusBadge'
 import { CARGO_LABELS } from '@/lib/concurso-status'
-import { NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/uploads'
+import { type CampoDocumento } from '@/lib/uploads'
 import { fechaHoraArg } from '@/lib/fecha'
 import Link from 'next/link'
 
@@ -88,15 +89,13 @@ export default async function PostulantesPage({ params }: { params: Promise<{ id
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap gap-1.5">
                         {CAMPOS.map((campo) => (
-                          <a
+                          <DocumentoUpload
                             key={campo}
+                            postulanteId={postulante.id}
+                            campo={campo}
+                            label={CAMPOS_LABEL[campo]}
                             href={`/api/admin/postulantes/${postulante.id}/documentos/${campo}`}
-                            download
-                            title={NOMBRES_DOCUMENTO[campo]}
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-face-blue transition hover:border-gray-300 hover:bg-gray-50"
-                          >
-                            {CAMPOS_LABEL[campo]}
-                          </a>
+                          />
                         ))}
                       </div>
                     </td>

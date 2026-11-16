@@ -58,6 +58,7 @@ Copiar `.env.example` a `.env` y completar los valores.
 | `SMTP_HOST` | No | Servidor SMTP. Por defecto `smtp.gmail.com`; servís para volver a un SMTP institucional |
 | `SMTP_PORT` | No | Puerto SMTP. Por defecto `465` (TLS implícito de Gmail); `587` usa STARTTLS |
 | `SMTP_SECURE` | No | `true` para TLS implícito (puerto 465). Por defecto se infiere del puerto |
+| `MAIL_DESACTIVADO` | No | `true` apaga el envío de correo aunque las credenciales estén configuradas (útil si Gmail rechaza el login) |
 
 \* Las tres son lo que necesita Gmail: con `SMTP_USER`, `SMTP_PASSWORD` y `SMTP_FROM` ausentes no se envía correo y la inscripción funciona igual.
 
@@ -91,6 +92,8 @@ Cada inscripción recibe un **código de 5 caracteres** (`codigoInscripcion`) ge
 El código aparece en cuatro lugares: la pantalla de confirmación, el encabezado del comprobante PDF, la primera línea del QR y la columna **ID** de la tabla de postulantes. Las búsquedas del panel siguen por nombre/DNI.
 
 La **observación** es una nota interna del Departamento Concursos: se edita desde la tabla de postulantes (`actualizarObservacion`, server action protegida por `requireAdmin`) y viaja en el export CSV y en el PDF, donde se imprime indentada debajo del postulante. No figura en el comprobante que descarga el interesado.
+
+Desde la misma tabla, cada documento del postulante tiene además un botón de subida (⤒): el admin puede **reemplazar o cargar** el PDF de un campo en cualquier momento (`subirDocumentoPostulante`, con la misma validación de PDF y límites que la inscripción). La ruta en disco no cambia, así que sirve tanto para corregir un documento como para restaurar archivos perdidos en un redeploy sin volumen persistente.
 
 El QR del comprobante lleva además la dirección del portal (`PORTAL_URL`, por defecto `https://concursos.face-unt.ar`). Es una variable separada de `AUTH_URL` a propósito: `AUTH_URL` define el dominio de las sesiones y del enlace firmado, y mudar uno no debería cambiar la referencia institucional que escanea un tercero.
 

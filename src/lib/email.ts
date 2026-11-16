@@ -8,7 +8,9 @@ let cachedTransport: Transporter | null = null
 // El correo saliente usa Gmail. Gmail no acepta la contraseña de la cuenta: hay que generar una
 // "contraseña de aplicación" (requiere verificación en 2 pasos) y ponerla en SMTP_PASSWORD.
 // SMTP_HOST y SMTP_PORT pisan el default cuando se quiera volver a un SMTP institucional.
+// MAIL_DESACTIVADO=true apaga el envío aunque haya credenciales configuradas (sin errores en el log).
 export function smtpConfigurado(): boolean {
+  if (process.env.MAIL_DESACTIVADO === 'true') return false
   return Boolean(
     process.env.SMTP_USER &&
       process.env.SMTP_PASSWORD &&
