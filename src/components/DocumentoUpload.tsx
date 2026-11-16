@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { subirDocumentoPostulante } from '@/actions/documentos-postulante'
-import { NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/uploads'
+import { NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/documentos'
 
 type State = { ok: boolean; error: string | null }
 

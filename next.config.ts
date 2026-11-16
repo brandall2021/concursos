@@ -27,9 +27,8 @@ const nextConfig: NextConfig = {
     // El proxy (src/proxy.ts) bufferiza el body de cada pedido para poder
     // leerlo más de una vez; el default de 10 MB truncaba las inscripciones
     // con PDFs grandes ("Unexpected end of form"). Se alinea con bodySizeLimit.
-    // Se setean ambos nombres porque la propiedad se renombró entre versiones.
+    // (En Next >=16.3 esta propiedad reemplazó a middlewareClientMaxBodySize.)
     proxyClientMaxBodySize: '400mb',
-    middlewareClientMaxBodySize: '400mb',
   },
   async headers() {
     return [

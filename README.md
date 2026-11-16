@@ -81,7 +81,7 @@ Todos los archivos deben estar en **PDF** (se valida en cliente y en servidor po
 
 Los archivos se guardan en disco bajo `UPLOAD_DIR`, en una carpeta por postulante (`<postulanteId>/<campo>.pdf`). **En producción debe montarse un volumen persistente**, de lo contrario la documentación se pierde en cada redeploy.
 
-El límite de subida de las Server Actions está configurado en `400 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`). Como además la app usa un proxy, el buffer de body del proxy está alineado en `400 MB` (`experimental.proxyClientMaxBodySize`, alias `middlewareClientMaxBodySize`); sin ese ajuste, el default de 10 MB trunca las subidas grandes aunque `bodySizeLimit` sea mayor.
+El límite de subida de las Server Actions está configurado en `400 MB` (`experimental.serverActions.bodySizeLimit` en `next.config.ts`). Como además la app usa un proxy, el buffer de body del proxy está alineado en `400 MB` (`experimental.proxyClientMaxBodySize`, que en Next <16.3 se llamaba `middlewareClientMaxBodySize`); sin ese ajuste, el default de 10 MB trunca las subidas grandes aunque `bodySizeLimit` sea mayor.
 
 ---
 
