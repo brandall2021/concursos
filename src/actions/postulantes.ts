@@ -9,6 +9,7 @@ import { enviarComprobantePorEmail, smtpConfigurado } from '@/lib/email'
 import { urlComprobante } from '@/lib/comprobante-firma'
 import { excedido, ipCliente } from '@/lib/rate-limit'
 import { esColisionDeCodigo, generarCodigoInscripcion } from '@/lib/codigo-inscripcion'
+import { registrarAuditoria } from '@/lib/auditoria'
 import {
   CAMPOS_DOCUMENTO,
   guardarArchivos,
@@ -59,7 +60,8 @@ export async function inscribirPostulante(formData: FormData): Promise<Postulant
   }
 
   const cabeceras = await headers()
-  if (excedido(`inscripcion:${ipCliente(cabeceras)}`)) {
+  const ip = ipCliente(cabeceras)
+  if (excedido(`inscripcion:${ip}`)) {
     return { success: false, error: 'Demasiados intentos seguidos. Esperá unos minutos y volvé a intentar.' }
   }
 
@@ -143,6 +145,21 @@ export async function inscribirPostulante(formData: FormData): Promise<Postulant
     await eliminarCarpetaPostulante(postulanteId).catch(() => {})
     return { success: false, error: 'Error interno. Intentá nuevamente.' }
   }
+
+  await registrarAuditoria({
+    accion: 'INSCRIPCION',
+    entidad: 'Postulante',
+    entidadId: postulante.id,
+    resumen: `Inscripción de ${apellidos}, ${nombres} (DNI ${dni}) en ${concurso.numeroExpediente}`,
+    detalles: {
+      concursoId,
+      numeroExpediente: concurso.numeroExpediente,
+      codigoInscripcion: postulante.codigoInscripcion,
+      email,
+      documentos: CAMPOS_DOCUMENTO,
+    },
+    ip,
+  })
 
   await enviarComprobante(postulante.id)
 

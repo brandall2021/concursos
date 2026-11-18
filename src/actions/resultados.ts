@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/guards'
 import { revalidatePath } from 'next/cache'
 import { borrarPdf, guardarPdf } from '@/lib/uploads'
 import { rutaResultadoRelativa, sePuedePublicarResultado, validarResultadoPdf } from '@/lib/resultados'
+import { actorDeSesion, registrarAuditoria } from '@/lib/auditoria'
 
 export type ResultadoActionResult = { success: true } | { success: false; error: string }
 
@@ -21,13 +22,13 @@ export async function publicarResultado(
   concursoId: string,
   formData: FormData
 ): Promise<ResultadoActionResult> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
 
   if (idNoValido(concursoId)) return { success: false, error: 'Concurso no válido' }
 
   const concurso = await prisma.concurso.findUnique({
     where: { id: concursoId },
-    select: { id: true, fechaApertura: true, fechaCierre: true, resultadoPath: true },
+    select: { id: true, numeroExpediente: true, fechaApertura: true, fechaCierre: true, resultadoPath: true },
   })
   if (!concurso) return { success: false, error: SIN_CONCURSO }
 
@@ -74,19 +75,28 @@ export async function publicarResultado(
     await borrarPdf(concurso.resultadoPath)
   }
 
+  await registrarAuditoria({
+    accion: 'PUBLICAR',
+    entidad: 'Concurso',
+    entidadId: concurso.id,
+    resumen: `Resultado publicado del llamado ${concurso.numeroExpediente}`,
+    detalles: { nombre: validado.nombre, ruta: nuevaRuta },
+    actor,
+  })
+
   revalidatePath('/admin/concursos')
   revalidatePath('/')
   return { success: true }
 }
 
 export async function despublicarResultado(concursoId: string): Promise<ResultadoActionResult> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
 
   if (idNoValido(concursoId)) return { success: false, error: 'Concurso no válido' }
 
   const concurso = await prisma.concurso.findUnique({
     where: { id: concursoId },
-    select: { id: true, resultadoPath: true, resultadoPublicadoEn: true },
+    select: { id: true, numeroExpediente: true, resultadoPath: true, resultadoPublicadoEn: true },
   })
   if (!concurso) return { success: false, error: SIN_CONCURSO }
   if (!concurso.resultadoPublicadoEn) return { success: false, error: 'Ese concurso no tiene nada publicado.' }
@@ -99,6 +109,14 @@ export async function despublicarResultado(concursoId: string): Promise<Resultad
   })
 
   if (concurso.resultadoPath) await borrarPdf(concurso.resultadoPath)
+
+  await registrarAuditoria({
+    accion: 'DESPUBLICAR',
+    entidad: 'Concurso',
+    entidadId: concurso.id,
+    resumen: `Resultado despublicado del llamado ${concurso.numeroExpediente}`,
+    actor,
+  })
 
   revalidatePath('/admin/concursos')
   revalidatePath('/')

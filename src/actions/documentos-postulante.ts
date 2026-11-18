@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/guards'
 import { prisma } from '@/lib/prisma'
 import { guardarPdf, rutasEsperadas, validarPdf } from '@/lib/uploads'
 import { CAMPOS_DOCUMENTO, type CampoDocumento } from '@/lib/documentos'
+import { actorDeSesion, registrarAuditoria } from '@/lib/auditoria'
 
 export type ResultadoSubida = { ok: boolean; error?: string }
 
@@ -16,7 +17,7 @@ export type ResultadoSubida = { ok: boolean; error?: string }
 export async function subirDocumentoPostulante(
   formData: FormData
 ): Promise<ResultadoSubida> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
 
   const postulanteId = String(formData.get('postulanteId') ?? '')
   const campo = String(formData.get('campo') ?? '') as CampoDocumento
@@ -40,6 +41,15 @@ export async function subirDocumentoPostulante(
     console.error(`[admin-documentos] No se pudo guardar ${campo} de ${postulanteId}:`, e)
     return { ok: false, error: 'No se pudo guardar el archivo. Intentá nuevamente.' }
   }
+
+  await registrarAuditoria({
+    accion: 'SUBIR_PDF',
+    entidad: 'Documento',
+    entidadId: postulanteId,
+    resumen: `Documento "${campo}" subido/reemplazado por el administrador`,
+    detalles: { campo, concursoId: postulante.concursoId },
+    actor,
+  })
 
   revalidatePath(`/admin/concursos/${postulante.concursoId}/postulantes`)
   return { ok: true }

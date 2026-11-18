@@ -24,6 +24,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     concurso: { findUnique: mockFindUniqueConcurso },
     postulante: { findUnique: mockFindUniquePostulante, create: mockCreate, delete: mockDelete },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
   },
 }))
 

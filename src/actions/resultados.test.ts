@@ -15,6 +15,7 @@ vi.mock('@/lib/uploads', () => ({ guardarPdf: mockGuardarPdf, borrarPdf: mockBor
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     concurso: { findUnique: mockFindUnique, update: mockUpdate },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
   },
 }))
 

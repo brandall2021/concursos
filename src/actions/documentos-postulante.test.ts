@@ -14,6 +14,7 @@ vi.mock('@/lib/guards', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     postulante: { findUnique: mockFindUnique },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
   },
 }))
 

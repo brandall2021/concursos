@@ -13,6 +13,7 @@ vi.mock('@/lib/guards', () => ({ requireAdmin: mockRequireAdmin }))
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     postulante: { findUnique: mockFindUnique, update: mockUpdate },
+    auditLog: { create: vi.fn().mockResolvedValue({}) },
   },
 }))
 

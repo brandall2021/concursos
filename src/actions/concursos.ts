@@ -8,6 +8,7 @@ import { CARGOS } from '@/lib/concurso-status'
 import { borrarPdf, CAMPOS_DOCUMENTO, limpiarArchivos, eliminarCarpetaPostulante, guardarPdf, type CampoDocumento } from '@/lib/uploads'
 import { rutaResolucionRelativa, validarResolucionPdf } from '@/lib/resoluciones'
 import { parsearFechaHoraArg } from '@/lib/fecha'
+import { actorDeSesion, registrarAuditoria, type Actor } from '@/lib/auditoria'
 
 export type ConcursoActionResult = { error: string } | void
 
@@ -97,7 +98,8 @@ async function reemplazarResolucion(
   concursoId: string,
   archivo: File,
   nombre: string,
-  rutaAnterior: string | null
+  rutaAnterior: string | null,
+  actor: Actor | null
 ): Promise<string | null> {
   const nuevaRuta = rutaResolucionRelativa(concursoId)
 
@@ -120,11 +122,20 @@ async function reemplazarResolucion(
   }
 
   if (rutaAnterior && rutaAnterior !== nuevaRuta) await borrarPdf(rutaAnterior)
+
+  await registrarAuditoria({
+    accion: rutaAnterior ? 'REEMPLAZAR_RESOLUCION' : 'SUBIR_PDF',
+    entidad: 'Concurso',
+    entidadId: concursoId,
+    resumen: `Resolución "${nombre}" ${rutaAnterior ? 'reemplazada' : 'cargada'}`,
+    detalles: { nombre, ruta: nuevaRuta },
+    actor,
+  })
   return null
 }
 
 export async function createConcurso(formData: FormData): Promise<ConcursoActionResult> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
   const datos = parsear(formData)
   if ('error' in datos) return datos
 
@@ -137,7 +148,7 @@ export async function createConcurso(formData: FormData): Promise<ConcursoAction
   })
 
   if (resolucion.file) {
-    const error = await reemplazarResolucion(concurso.id, resolucion.file, resolucion.nombre, null)
+    const error = await reemplazarResolucion(concurso.id, resolucion.file, resolucion.nombre, null, actor)
     if (error) {
       // Un llamado sin su resolución cargada queda incompleto para la publicación: se descarta.
       await prisma.concurso.delete({ where: { id: concurso.id } })
@@ -145,13 +156,28 @@ export async function createConcurso(formData: FormData): Promise<ConcursoAction
     }
   }
 
+  await registrarAuditoria({
+    accion: 'CREAR',
+    entidad: 'Concurso',
+    entidadId: concurso.id,
+    resumen: `Alta del llamado ${datos.numeroExpediente} (${datos.cargo})`,
+    detalles: {
+      numeroExpediente: datos.numeroExpediente,
+      cargo: datos.cargo,
+      dedicacion: datos.dedicacion,
+      fechaApertura: datos.fechaApertura.toISOString(),
+      fechaCierre: datos.fechaCierre.toISOString(),
+    },
+    actor,
+  })
+
   revalidatePath('/admin/concursos')
   revalidatePath('/')
   redirect('/admin/concursos')
 }
 
 export async function updateConcurso(id: string, formData: FormData): Promise<ConcursoActionResult> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
   const datos = parsear(formData)
   if ('error' in datos) return datos
 
@@ -166,14 +192,36 @@ export async function updateConcurso(id: string, formData: FormData): Promise<Co
 
   await prisma.concurso.update({ where: { id }, data: datos })
 
+  await registrarAuditoria({
+    accion: 'EDITAR',
+    entidad: 'Concurso',
+    entidadId: id,
+    resumen: `Modificación del llamado ${datos.numeroExpediente} (${datos.cargo})`,
+    detalles: {
+      numeroExpediente: datos.numeroExpediente,
+      cargo: datos.cargo,
+      dedicacion: datos.dedicacion,
+      fechaApertura: datos.fechaApertura.toISOString(),
+      fechaCierre: datos.fechaCierre.toISOString(),
+    },
+    actor,
+  })
+
   if (resolucion.file) {
-    const error = await reemplazarResolucion(id, resolucion.file, resolucion.nombre, concurso.resolucionPath)
+    const error = await reemplazarResolucion(id, resolucion.file, resolucion.nombre, concurso.resolucionPath, actor)
     if (error) return { error }
   } else if (formData.get('quitarResolucion') === 'on' && concurso.resolucionPath) {
     // Primero se desregistra la ruta y después se borra el archivo: al revés, un update fallado
     // dejaría el enlace público apuntando a un PDF que ya no está en disco.
     await prisma.concurso.update({ where: { id }, data: { resolucionPath: null, resolucionNombre: null } })
     await borrarPdf(concurso.resolucionPath)
+    await registrarAuditoria({
+      accion: 'QUITAR_RESOLUCION',
+      entidad: 'Concurso',
+      entidadId: id,
+      resumen: 'Resolución quitada del llamado',
+      actor,
+    })
   }
 
   revalidatePath('/admin/concursos')
@@ -182,7 +230,7 @@ export async function updateConcurso(id: string, formData: FormData): Promise<Co
 }
 
 export async function deleteConcurso(id: string): Promise<ConcursoActionResult> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
 
   const concurso = await prisma.concurso.findUnique({
     where: { id },
@@ -212,5 +260,13 @@ export async function deleteConcurso(id: string): Promise<ConcursoActionResult> 
   }
 
   await prisma.concurso.delete({ where: { id } })
+
+  await registrarAuditoria({
+    accion: 'BORRAR',
+    entidad: 'Concurso',
+    entidadId: id,
+    resumen: `Baja del llamado (${concurso.postulantes.length} postulante${concurso.postulantes.length === 1 ? '' : 's'} eliminado${concurso.postulantes.length === 1 ? '' : 's'})`,
+    actor,
+  })
   revalidatePath('/admin/concursos')
 }

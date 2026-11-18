@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/guards'
 import { revalidatePath } from 'next/cache'
+import { actorDeSesion, registrarAuditoria } from '@/lib/auditoria'
 
 export type ObservacionResult = { success: true } | { success: false; error: string }
 
@@ -12,7 +13,7 @@ export async function actualizarObservacion(
   postulanteId: string,
   texto: string
 ): Promise<ObservacionResult> {
-  await requireAdmin()
+  const actor = actorDeSesion(await requireAdmin())
 
   if (typeof postulanteId !== 'string' || postulanteId.length === 0) {
     return { success: false, error: 'Postulante no válido' }
@@ -36,6 +37,15 @@ export async function actualizarObservacion(
   await prisma.postulante.update({
     where: { id: postulanteId },
     data: { observacion: observacion || null },
+  })
+
+  await registrarAuditoria({
+    accion: 'EDITAR',
+    entidad: 'Postulante',
+    entidadId: postulanteId,
+    resumen: observacion ? 'Observación actualizada' : 'Observación eliminada',
+    detalles: { observacion: observacion || null },
+    actor,
   })
 
   revalidatePath(`/admin/concursos/${postulante.concursoId}/postulantes`)

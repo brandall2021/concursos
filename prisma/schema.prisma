@@ -53,6 +53,26 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Registro inmutable de altas, edits, borrados y subidas de archivos.
+// No hay FK a User: un admin dado de baja y una inscripción pública deben quedar
+// trazables aunque el usuario ya no exista o nunca haya tenido sesión.
+model AuditLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  actorId     String?
+  actorEmail  String
+  actorNombre String?
+  accion      String
+  entidad     String
+  entidadId   String?
+  resumen     String
+  detalles    Json?
+
+  @@index([createdAt])
+  @@index([entidad, entidadId])
+  @@index([actorEmail])
+}
+
 model Concurso {
   id                   String        @id @default(cuid())
   numeroExpediente     String
