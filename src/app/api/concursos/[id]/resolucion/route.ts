@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { readFile } from 'node:fs/promises'
 import { prisma } from '@/lib/prisma'
-import { resolverArchivo } from '@/lib/uploads'
+import { leerPdf } from '@/lib/uploads'
 import { cabeceraEnPantalla } from '@/lib/http'
 import { nombreDescargaResolucion } from '@/lib/resoluciones'
 
@@ -25,11 +24,11 @@ export async function GET(
 
   let buffer: Buffer
   try {
-    buffer = await readFile(resolverArchivo(concurso.resolucionPath))
+    buffer = await leerPdf(concurso.resolucionPath)
   } catch (e) {
     console.error(`[resolucion] No se pudo leer "${concurso.resolucionPath}" del concurso ${id}:`, e)
     return new NextResponse(
-      'La Resolución no está disponible en el servidor. Si el contenedor fue reconstruido, configurá un volumen persistente para el directorio de subidas.',
+      'La Resolución no está disponible en el almacenamiento configurado.',
       { status: 404 }
     )
   }

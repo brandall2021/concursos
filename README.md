@@ -280,9 +280,32 @@ SMTP_FROM=Concursos Docentes <concursos.face@gmail.com>
 
 ---
 
-### 3. Configurar el volumen de uploads
+### 3. Almacenamiento de los PDFs: MinIO (recomendado) o volumen local
 
-En Dokploy → aplicación → **Advanced** → **Volumes / Mounts**, agregar:
+Los PDFs se pueden guardar en MinIO (S3) o en el disco del contenedor. **Si están definidas las variables `S3_*`, se usa MinIO** y `UPLOAD_DIR` queda en desuso. Las rutas relativas guardadas en la base (`<postulanteId>/cv.pdf`, `resultados/...`, `resoluciones/...`) pasan a ser las claves del bucket, así que no hace falta migrar la base.
+
+Variables en Dokploy → aplicación → **Environment**:
+
+| Variable | Valor |
+|---|---|
+| `S3_ENDPOINT` | URL del **puerto de API** de MinIO (9000), p. ej. `http://sistemas-minio-nm5zyv-minio-1:9000` si la app está en la misma red Docker |
+| `S3_BUCKET` | `concursos` |
+| `S3_ACCESS_KEY` | ACCESS KEY de MinIO |
+| `S3_SECRET_KEY` | SECRET KEY de MinIO |
+| `S3_REGION` | `us-east-1` |
+
+> ⚠️ El dominio público `...sslip.io` de MinIO suele publicar la **consola** (9001). Si `S3_ENDPOINT` apunta ahí, falla con `S3 API Requests must be made to API port`. Usá el puerto 9000 (nombre de contenedor/IP interna).
+
+Verificar conexión y migrar los PDFs existentes (se ejecuta una vez, desde una máquina con acceso al puerto 9000 y con `UPLOAD_DIR` apuntando a los archivos actuales):
+
+```bash
+node scripts/verificar-minio.mjs
+node scripts/migrar-a-minio.mjs
+```
+
+El script de migración crea el bucket si no existe y respeta las claves ya registradas en la base.
+
+**Modo alternativo (sin MinIO):** en Dokploy → aplicación → **Advanced** → **Volumes / Mounts**, agregar:
 
 | Campo | Valor |
 |---|---|

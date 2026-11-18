@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { readFile } from 'node:fs/promises'
 import { prisma } from '@/lib/prisma'
-import { resolverArchivo } from '@/lib/uploads'
+import { leerPdf } from '@/lib/uploads'
 import { cabeceraEnPantalla } from '@/lib/http'
 import { nombreDescargaResultado } from '@/lib/resultados'
 
@@ -25,11 +24,11 @@ export async function GET(
 
   let buffer: Buffer
   try {
-    buffer = await readFile(resolverArchivo(concurso.resultadoPath))
+    buffer = await leerPdf(concurso.resultadoPath)
   } catch (e) {
     console.error(`[resultado] No se pudo leer "${concurso.resultadoPath}" del concurso ${id}:`, e)
     return new NextResponse(
-      'El documento publicado no está disponible en el servidor. Si el contenedor fue reconstruido, configurá un volumen persistente para el directorio de subidas.',
+      'El documento publicado no está disponible en el almacenamiento configurado.',
       { status: 404 }
     )
   }

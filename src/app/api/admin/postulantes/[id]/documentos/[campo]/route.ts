@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
-import { readFile } from 'node:fs/promises'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { resolverArchivo, CAMPOS_DOCUMENTO, NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/uploads'
+import { leerPdf, CAMPOS_DOCUMENTO, NOMBRES_DOCUMENTO, type CampoDocumento } from '@/lib/uploads'
 import { cabeceraDescarga } from '@/lib/http'
 
 const CAMPO_A_PATH: Record<CampoDocumento, 'solicitudPath' | 'dniPath' | 'cvPath' | 'antecedentesPath'> = {
@@ -31,11 +30,11 @@ export async function GET(
 
   let buffer: Buffer
   try {
-    buffer = await readFile(resolverArchivo(relativa))
+    buffer = await leerPdf(relativa)
   } catch (e) {
     console.error(`[documentos] No se pudo leer "${relativa}" para el postulante ${id}:`, e)
     return new NextResponse(
-      'El documento no está disponible en el servidor. Si el contenedor fue reconstruido, configurá un volumen persistente para el directorio de subidas.',
+      'El documento no está disponible en el almacenamiento configurado.',
       { status: 404 }
     )
   }

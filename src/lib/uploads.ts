@@ -1,6 +1,13 @@
-import { mkdir, writeFile, unlink, rm } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, unlink, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { CAMPOS_DOCUMENTO, type CampoDocumento } from './documentos'
+import {
+  usandoMinio,
+  minioGuardar,
+  minioLeer,
+  minioBorrar,
+  minioBorrarCarpeta,
+} from './minio'
 
 export * from './documentos'
 
@@ -17,6 +24,15 @@ function dentroDeUploadDir(relativa: string): string {
   return destino
 }
 
+async function escribir(relativa: string, buffer: Buffer): Promise<void> {
+  if (usandoMinio()) {
+    await minioGuardar(relativa, buffer)
+    return
+  }
+  await mkdir(path.dirname(dentroDeUploadDir(relativa)), { recursive: true })
+  await writeFile(dentroDeUploadDir(relativa), buffer)
+}
+
 export function rutasEsperadas(postulanteId: string): Record<CampoDocumento, string> {
   return Object.fromEntries(
     CAMPOS_DOCUMENTO.map((campo) => [campo, path.join(postulanteId, `${campo}.pdf`)])
@@ -27,42 +43,42 @@ export async function guardarArchivos(
   postulanteId: string,
   files: Record<CampoDocumento, File>
 ): Promise<Record<CampoDocumento, string>> {
-  const dir = path.join(uploadDir(), postulanteId)
-  await mkdir(dir, { recursive: true })
+  if (!usandoMinio()) {
+    await mkdir(path.join(uploadDir(), postulanteId), { recursive: true })
+  }
 
   const paths = {} as Record<CampoDocumento, string>
   for (const campo of CAMPOS_DOCUMENTO) {
     const buffer = Buffer.from(await files[campo].arrayBuffer())
     const relativa = path.join(postulanteId, `${campo}.pdf`)
-    await writeFile(dentroDeUploadDir(relativa), buffer)
+    await escribir(relativa, buffer)
     paths[campo] = relativa
   }
   return paths
 }
 
 export async function limpiarArchivos(paths: Partial<Record<CampoDocumento, string>>) {
-  await Promise.all(
-    Object.values(paths).map(async (relativa) => {
-      if (!relativa) return
-      try {
-        await unlink(dentroDeUploadDir(relativa))
-      } catch {
-        // ignorar archivos inexistentes
-      }
-    })
-  )
+  await Promise.all(Object.values(paths).map((relativa) => (relativa ? borrarPdf(relativa) : undefined)))
 }
 
 // Escritura genérica de un PDF por ruta relativa (los resultados de concurso se guardan en
-// resultados/<concursoId>.pdf, no en la carpeta de un postulante). El guardado de ruta se hace acá
-// para que ningún llamador pueda saltarse la validación de dentroDeUploadDir.
+// resultados/<concursoId>.pdf, no en la carpeta de un postulante). La validación de la ruta
+// se hace acá para que ningún llamador pueda saltarse el control, sea disco o MinIO.
 export async function guardarPdf(relativa: string, file: File): Promise<void> {
-  const destino = dentroDeUploadDir(relativa)
-  await mkdir(path.dirname(destino), { recursive: true })
-  await writeFile(destino, Buffer.from(await file.arrayBuffer()))
+  await escribir(relativa, Buffer.from(await file.arrayBuffer()))
+}
+
+// Lectura usada por las rutas de descarga: elige MinIO o disco según la configuración.
+export async function leerPdf(relativa: string): Promise<Buffer> {
+  if (usandoMinio()) return minioLeer(relativa)
+  return readFile(dentroDeUploadDir(relativa))
 }
 
 export async function borrarPdf(relativa: string): Promise<void> {
+  if (usandoMinio()) {
+    await minioBorrar(relativa)
+    return
+  }
   try {
     await unlink(dentroDeUploadDir(relativa))
   } catch {
@@ -71,6 +87,10 @@ export async function borrarPdf(relativa: string): Promise<void> {
 }
 
 export async function eliminarCarpetaPostulante(postulanteId: string) {
+  if (usandoMinio()) {
+    await minioBorrarCarpeta(postulanteId)
+    return
+  }
   await rm(dentroDeUploadDir(postulanteId), { recursive: true, force: true })
 }
 
