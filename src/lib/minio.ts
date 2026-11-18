@@ -12,7 +12,9 @@ import {
 } from '@aws-sdk/client-s3'
 
 type Config = {
-  endpoint: string
+  // Se permiten varias URLs separadas por coma: se prueba cada una y se usa la
+  // primera que responda (útil para elegir la IP interna correcta de MinIO).
+  endpoints: string[]
   bucket: string
   region: string
   accessKeyId: string
@@ -20,13 +22,16 @@ type Config = {
 }
 
 export function configMinio(): Config | null {
-  const endpoint = process.env.S3_ENDPOINT?.trim()
+  const endpoints = (process.env.S3_ENDPOINT ?? '')
+    .split(',')
+    .map((valor) => valor.trim())
+    .filter(Boolean)
   const bucket = process.env.S3_BUCKET?.trim()
   const accessKeyId = process.env.S3_ACCESS_KEY?.trim()
   const secretAccessKey = process.env.S3_SECRET_KEY?.trim()
-  if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) return null
+  if (endpoints.length === 0 || !bucket || !accessKeyId || !secretAccessKey) return null
   return {
-    endpoint,
+    endpoints,
     bucket,
     region: process.env.S3_REGION?.trim() || 'us-east-1',
     accessKeyId,
@@ -40,12 +45,20 @@ export function usandoMinio(): boolean {
 
 let cliente: S3Client | null = null
 let claveCliente = ''
+let endpointActivo = ''
 
-function clienteS3(cfg: Config): S3Client {
-  const clave = `${cfg.endpoint}|${cfg.region}|${cfg.bucket}|${cfg.accessKeyId}`
-  if (!cliente || claveCliente !== clave) {
-    cliente = new S3Client({
-      endpoint: cfg.endpoint,
+export function endpointMinio(): string {
+  return endpointActivo
+}
+
+async function clienteS3(cfg: Config): Promise<S3Client> {
+  const clave = `${cfg.endpoints.join(',')}|${cfg.region}|${cfg.bucket}|${cfg.accessKeyId}`
+  if (cliente && claveCliente === clave) return cliente
+
+  let ultimoError: unknown
+  for (const endpoint of cfg.endpoints) {
+    const candidato = new S3Client({
+      endpoint,
       region: cfg.region,
       // MinIO requiere estilo por path: http://endpoint/bucket/clave
       forcePathStyle: true,
@@ -54,9 +67,18 @@ function clienteS3(cfg: Config): S3Client {
         secretAccessKey: cfg.secretAccessKey,
       },
     })
-    claveCliente = clave
+    try {
+      await candidato.send(new ListBucketsCommand({}))
+      cliente = candidato
+      claveCliente = clave
+      endpointActivo = endpoint
+      return candidato
+    } catch (error) {
+      ultimoError = error
+      console.warn(`[minio] Endpoint ${endpoint} no disponible:`, error instanceof Error ? error.message : error)
+    }
   }
-  return cliente
+  throw ultimoError ?? new Error('No se pudo conectar con MinIO')
 }
 
 function configObligatoria(): Config {
@@ -84,7 +106,8 @@ export function claveSegura(relativa: string): string {
 // Usado por el chequeo admin: prueba credenciales y conectividad desde el propio contenedor.
 export async function minioListarBuckets(): Promise<string[]> {
   const cfg = configObligatoria()
-  const res = await clienteS3(cfg).send(new ListBucketsCommand({}))
+  const s3 = await clienteS3(cfg)
+  const res = await s3.send(new ListBucketsCommand({}))
   return (res.Buckets ?? []).map((bucket) => bucket.Name ?? '')
 }
 
@@ -94,7 +117,8 @@ export async function minioGuardar(
   contentType = 'application/pdf'
 ): Promise<void> {
   const cfg = configObligatoria()
-  await clienteS3(cfg).send(
+  const s3 = await clienteS3(cfg)
+  await s3.send(
     new PutObjectCommand({
       Bucket: cfg.bucket,
       Key: claveSegura(relativa),
@@ -107,7 +131,8 @@ export async function minioGuardar(
 
 export async function minioLeer(relativa: string): Promise<Buffer> {
   const cfg = configObligatoria()
-  const res = await clienteS3(cfg).send(
+  const s3 = await clienteS3(cfg)
+  const res = await s3.send(
     new GetObjectCommand({ Bucket: cfg.bucket, Key: claveSegura(relativa) })
   )
   if (!res.Body) throw new Error(`MinIO devolvió un cuerpo vacío para "${relativa}"`)
@@ -117,7 +142,8 @@ export async function minioLeer(relativa: string): Promise<Buffer> {
 export async function minioBorrar(relativa: string): Promise<void> {
   const cfg = configObligatoria()
   try {
-    await clienteS3(cfg).send(
+    const s3 = await clienteS3(cfg)
+    await s3.send(
       new DeleteObjectCommand({ Bucket: cfg.bucket, Key: claveSegura(relativa) })
     )
   } catch {
@@ -128,7 +154,7 @@ export async function minioBorrar(relativa: string): Promise<void> {
 export async function minioBorrarCarpeta(prefijo: string): Promise<void> {
   const cfg = configObligatoria()
   const prefijoSeguro = `${claveSegura(prefijo)}/`
-  const s3 = clienteS3(cfg)
+  const s3 = await clienteS3(cfg)
   let continuationToken: string | undefined
 
   do {

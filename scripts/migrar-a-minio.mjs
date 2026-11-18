@@ -7,6 +7,7 @@ import {
   CreateBucketCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListBucketsCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
@@ -19,15 +20,32 @@ if (faltan.length) {
 }
 
 const bucket = process.env.S3_BUCKET
-const s3 = new S3Client({
-  endpoint: process.env.S3_ENDPOINT,
+const opciones = {
   region: process.env.S3_REGION ?? 'us-east-1',
   forcePathStyle: true,
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY,
     secretAccessKey: process.env.S3_SECRET_KEY,
   },
-})
+}
+
+// S3_ENDPOINT admite varias URLs separadas por coma; se usa la primera que responde.
+let s3
+for (const endpoint of process.env.S3_ENDPOINT.split(',').map((u) => u.trim()).filter(Boolean)) {
+  const candidato = new S3Client({ ...opciones, endpoint })
+  try {
+    await candidato.send(new ListBucketsCommand({}))
+    s3 = candidato
+    console.log(`Usando endpoint ${endpoint}`)
+    break
+  } catch (error) {
+    console.error(`Endpoint ${endpoint} no disponible:`, error.message)
+  }
+}
+if (!s3) {
+  console.error('No se pudo conectar con ningún endpoint S3')
+  process.exit(1)
+}
 
 async function asegurarBucket() {
   try {

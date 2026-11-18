@@ -40,9 +40,17 @@ describe('configuración de MinIO', () => {
     vi.stubEnv('S3_SECRET_KEY', 'secret')
     expect(usandoMinio()).toBe(true)
     expect(configMinio()).toMatchObject({
-      endpoint: 'http://minio:9000',
+      endpoints: ['http://minio:9000'],
       bucket: 'concursos',
       region: 'us-east-1',
     })
+  })
+
+  it('acepta varias URLs internas separadas por coma', () => {
+    vi.stubEnv('S3_ENDPOINT', 'http://10.0.1.20:9000, http://172.24.0.2:9000')
+    vi.stubEnv('S3_BUCKET', 'concursos')
+    vi.stubEnv('S3_ACCESS_KEY', 'user')
+    vi.stubEnv('S3_SECRET_KEY', 'secret')
+    expect(configMinio()?.endpoints).toEqual(['http://10.0.1.20:9000', 'http://172.24.0.2:9000'])
   })
 })

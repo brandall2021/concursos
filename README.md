@@ -288,7 +288,7 @@ Variables en Dokploy → aplicación → **Environment**:
 
 | Variable | Valor |
 |---|---|
-| `S3_ENDPOINT` | URL del **puerto de API** de MinIO (9000), p. ej. `http://sistemas-minio-nm5zyv-minio-1:9000` si la app está en la misma red Docker |
+| `S3_ENDPOINT` | URL(s) del **puerto de API** de MinIO (9000), separadas por coma. Ej: `http://10.0.1.20:9000,http://172.24.0.2:9000`. Se prueba cada una y se usa la primera que responde |
 | `S3_BUCKET` | `concursos` |
 | `S3_ACCESS_KEY` | ACCESS KEY de MinIO |
 | `S3_SECRET_KEY` | SECRET KEY de MinIO |

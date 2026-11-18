@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { configMinio, minioListarBuckets } from '@/lib/minio'
+import { configMinio, endpointMinio, minioListarBuckets } from '@/lib/minio'
 
 // Diagnóstico: permite probar S3_ENDPOINT desde dentro del contenedor de la app,
 // donde resuelven los nombres internos de Docker que no existen fuera de la red.
@@ -17,7 +17,8 @@ export async function GET() {
     const buckets = await minioListarBuckets()
     return NextResponse.json({
       ok: true,
-      endpoint: cfg.endpoint,
+      endpoints: cfg.endpoints,
+      endpointActivo: endpointMinio(),
       bucket: cfg.bucket,
       buckets,
     })
@@ -25,7 +26,7 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
-        endpoint: cfg.endpoint,
+        endpoints: cfg.endpoints,
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 502 }
