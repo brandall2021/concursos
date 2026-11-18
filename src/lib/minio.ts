@@ -2,9 +2,11 @@
 // Se activa solo cuando están definidas S3_ENDPOINT + S3_BUCKET + credenciales;
 // si no, los archivos siguen yendo al directorio local (UPLOAD_DIR).
 import {
+  CreateBucketCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   ListBucketsCommand,
   ListObjectsV2Command,
   PutObjectCommand,
@@ -69,6 +71,13 @@ async function clienteS3(cfg: Config): Promise<S3Client> {
     })
     try {
       await candidato.send(new ListBucketsCommand({}))
+      // El bucket se crea solo la primera vez: así el deploy no depende de un paso manual.
+      try {
+        await candidato.send(new HeadBucketCommand({ Bucket: cfg.bucket }))
+      } catch {
+        await candidato.send(new CreateBucketCommand({ Bucket: cfg.bucket }))
+        console.log(`[minio] Bucket "${cfg.bucket}" creado.`)
+      }
       cliente = candidato
       claveCliente = clave
       endpointActivo = endpoint
