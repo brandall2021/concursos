@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  ListBucketsCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -78,6 +79,13 @@ export function claveSegura(relativa: string): string {
     throw new Error('Ruta de documento fuera del directorio de subidas')
   }
   return clave
+}
+
+// Usado por el chequeo admin: prueba credenciales y conectividad desde el propio contenedor.
+export async function minioListarBuckets(): Promise<string[]> {
+  const cfg = configObligatoria()
+  const res = await clienteS3(cfg).send(new ListBucketsCommand({}))
+  return (res.Buckets ?? []).map((bucket) => bucket.Name ?? '')
 }
 
 export async function minioGuardar(
